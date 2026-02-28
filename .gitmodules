@@ -1,0 +1,3 @@
+[submodule "ncurses"]
+	path = ncurses
+	url = git@github.com:juergenpf/ncurses-snapshots.git
