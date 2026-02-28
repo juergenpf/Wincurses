@@ -1,0 +1,14 @@
+workspace="$(realpath /workspaces/*)"
+NCSCRIPTS="$workspace/Scripts"
+if [ -d "$NCSCRIPTS" ]; then
+    export PATH="$NCSCRIPTS:$PATH"
+    export NCSCRIPTS
+else
+    unset NCSCRIPTS
+fi
+
+case $- in
+    *i*) PS1="wincurses\$ "  
+        ;;
+    *) return;;
+esac

@@ -1,0 +1,429 @@
+#!/usr/bin/env bash
+# See License.md in the project root for license information.
+#
+SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
+
+_log() {
+    echo "$@" >&2
+}
+
+_fail() {
+    _log "ERROR: $@"
+    exit 1
+}
+
+not_implemented() {
+    _log "Not implemented: $@"
+    exit 1 
+}
+
+
+NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
+
+abiversion=6
+#
+# Subdirectory prefixes for MSYS2 builds
+MINGW_PREFIX=mingw64
+UCRT64_PREFIX=ucrt64
+CLANG64_PREFIX=clang64
+#
+__is_wsl2=0
+uname -r | grep -q WSL2
+[ $? -eq 0 ] && __is_wsl2=1
+
+# Test if we are running in a container (Docker, Podman, etc.) by checking 
+# for the presence of the /.dockerenv file.
+in_container() {
+    [ -f /.dockerenv ] && return 0
+    return 1
+}
+
+# Test if we are running in WSL2 by checking the kernel version for the presence of "WSL2".
+in_wsl2() {
+    [ $__is_wsl2 -ne 0 ] && return 0
+    return 1
+}
+
+err=
+_cfgopts=0 # Count the number of options that affect the configuration
+_nondefault_opts=0 # Count the number of options that differ from the default configuration
+_opt_widec=1
+_opt_reentrant=0
+_opt_ucrt=1
+_opt_debug=1
+_opt_clean=0
+_opt_woa=0
+_opt_x86=0
+_opt_verbose=0
+_opt_dynamic=0
+_opt_libseparate=0
+
+opt_widec() {
+    [ $_opt_widec -ne 0 ] && return 0
+    return 1
+}
+
+opt_reentrant() {
+    [ $_opt_reentrant -ne 0 ] && return 0
+    return 1
+}
+
+opt_ucrt() {
+    [ $_opt_ucrt -ne 0 ] && return 0
+    return 1
+}
+
+opt_debug() {
+    [ $_opt_debug -ne 0 ] && return 0
+    return 1
+}
+
+opt_clean() {
+    [ $_opt_clean -ne 0 ] && return 0
+    return 1
+}
+
+opt_woa() {
+    [ $_opt_woa -ne 0 ] && return 0
+    return 1
+}
+
+opt_x86() {
+    [ $_opt_x86 -ne 0 ] && return 0
+    return 1
+}
+
+opt_dynamic() {
+    [ $_opt_dynamic -ne 0 ] && return 0
+    return 1
+}
+
+opt_libseparate() {
+    [ $_opt_libseparate -ne 0 ] && return 0
+    return 1
+}
+
+get_options() {
+    eval set -- "$(getopt -o atmwxldncvh -l ascii,reentrant,msvcrt,woa,x86,libseparate,dynamic,nodebug,clean,verbose,help -- "$@")"
+
+    while true
+    do
+	    case "$1" in
+	    -a|--ascii)
+		    _opt_widec=0
+		    _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+		    shift
+		    ;;
+	    -t|--reentrant)
+		    _opt_reentrant=1
+		    _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+		    shift
+		    ;;
+	    -m|--msvcrt)
+		    _opt_ucrt=0
+		    _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+		    shift
+		    ;;
+        -n|--nodebug)
+            _opt_debug=0
+            _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+            shift
+            ;;
+        -c|--clean)
+            _opt_clean=1
+            shift
+            ;;
+        -w|--woa)
+            _opt_woa=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+            shift
+            ;;
+        -x|--x86)
+            _opt_x86=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+            shift
+            ;;
+        -v|--verbose)
+            _opt_verbose=1
+            shift
+            ;;
+        -d|--dynamic)
+            _opt_dynamic=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [options]"
+            echo "Options:"
+            echo "  -a, --ascii           Build ASCII version (disable wide character support)"
+            echo "  -t, --reentrant       Build reentrant version"
+            echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT"
+            echo "  -w, --woa             Build for Windows on ARM (WOA) with UCRT"
+            echo "  -x, --x86             Build for x86 (i686) with MSVCRT"
+            echo "  -l, --libseparate     Build terminfo library separately from curses"
+            echo "  -d, --dynamic         Build with shared libraries (default is static)"
+            echo "  -n, --nodebug         Build without debug symbols and features"
+            echo "  -c, --clean           Clean build and install directories before building"
+            echo "  -v, --verbose         Enable verbose output"
+            echo "  -h, --help            Show this help message and exit"
+            shift
+            exit 0
+            ;;
+	    --)
+		    shift
+		    break
+		    ;;
+	    *)
+		    err="$err $1"
+		    shift
+		    break
+		    ;;
+	    esac
+    done
+}
+
+_trace() {
+    if [ $_opt_verbose -ne 0 ]; then
+        _log "TRACE: $@"
+    fi
+}
+
+consistency_checks() {
+    if opt_x86 && opt_woa; then
+        _fail "x86 and WOA build options are mutually exclusive."
+    fi
+    if opt_x86 && opt_ucrt; then
+        _fail "x86 builds for UCRT are not supported."
+    fi
+    if opt_woa && ! opt_ucrt; then
+        _fail "WOA builds require UCRT."
+    fi  
+}
+
+in_container || _fail "Not running in devcontainer." 
+
+get_options $@
+[ -n "$err" ] && _fail "Invalid options: $err"
+
+_default_build=0
+[ $_nondefault_opts -eq 0 ] && _default_build=1
+if [ $_default_build -ne 0 ]; then
+    _trace "Running with default settings (widec support, UCRT target, debug build)"
+    _opt_widec=1
+    _opt_ucrt=1
+    _opt_debug=1
+fi
+
+consistency_checks
+
+_relative_instroot=inst
+_relative_buildroot=build
+
+build_prefix() {
+    local prefix=
+    local arch=$(uname -m)
+    local _config_prefix=mingw64
+
+    if opt_debug; then
+        prefix=debug
+    else
+        prefix=release
+    fi
+    if opt_woa; then
+        arch=aarch64
+        _config_prefix=mingw64
+    elif opt_x86; then
+        arch=i686
+        _config_prefix=mingw32
+    else
+        arch=x86_64
+        _config_prefix=mingw64
+        opt_ucrt && _config_prefix=ucrt64
+    fi  
+    prefix="${prefix}/WindowsCross/${arch}"
+    echo "$prefix||$_config_prefix"
+}
+
+get_suffix() {
+    local libsuffix=
+    opt_reentrant && libsuffix="${libsuffix}t"
+    opt_widec && libsuffix="${libsuffix}w"
+    echo "$libsuffix"
+}
+
+relative_builddir() {
+    local suffix=$(get_suffix)
+    local pre=$(build_prefix)
+    local config_prefix=${pre##*||}
+    echo "${pre%%||*}/nc${suffix}/${config_prefix}"
+}
+
+relative_installbase() {
+    local suffix=$(get_suffix)
+    local pre=$(build_prefix)
+    echo "${pre%%||*}/nc${suffix}"
+}
+
+relative_installdir() {
+    local pre=$(build_prefix)
+    local config_prefix=${pre##*||}
+    echo "$(relative_installbase)/${config_prefix}"
+}
+
+pre=$(build_prefix)
+_config_dir=${pre%%||*}
+_config_prefix=${pre##*||} 
+_trace "Build prefix: ${_config_dir}"
+_trace "Configuration prefix: ${_config_prefix}"
+_trace "Library suffix: $(get_suffix)"
+_trace "Relative build directory: $(relative_builddir)"
+_trace "Relative install base: $(relative_installbase)"
+_trace "Relative install directory: $(relative_installdir)"
+
+NCBUILD=${NC_WORKSPACE}/$_relative_buildroot/$(relative_builddir)
+if opt_clean; then
+    _trace "Cleaning build directory: ${NCBUILD}"
+    rm -rf "${NCBUILD}"
+fi
+_trace "NCBUILD: ${NCBUILD}, creating..."
+mkdir -p "${NCBUILD}"
+
+NCINST=${NC_WORKSPACE}/$_relative_instroot/$(relative_installdir)
+if opt_clean; then
+    _trace "Cleaning install directory: ${NCINST}"
+    rm -rf "${NCINST}"
+fi
+_trace "NCINST: ${NCINST}, creating..."
+mkdir -p "${NCINST}"
+
+build_bht=$(uname -m)-linux-gnu
+host_bht=
+if opt_woa; then
+    host_bht="aarch64-w64-mingw32"
+elif opt_x86; then  
+    host_bht="i686-w64-mingw32"
+else
+    host_bht="x86_64-w64-mingw32"
+    opt_ucrt && host_bht="x86_64-w64-mingw32ucrt"
+fi
+env_file=$NC_WORKSPACE/.devcontainer/crossenvs/${host_bht}.env
+if [ -f "$env_file" ]; then
+    _trace "Sourcing cross build environment from: ${env_file}"
+    source "$env_file"
+else
+    _fail "Cross build environment file not found: ${env_file}"
+fi  
+_trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
+
+do_config() {
+    local srcdir=$NC_WORKSPACE/ncurses
+    local cfg=$srcdir/configure
+    local dynopts="--with-shared"
+    local opts="--build=${build_bht} \
+        --host=${host_bht} \
+        --with-build-cc=${build_bht}-gcc \
+        --with-build-cpp=${build_bht}-cpp"
+    local cflags= 
+    local ldflags=
+    [ -x "$cfg" ] || _fail "Configure script not found or not executable: $cfg"
+    if ! opt_dynamic; then
+        dynopts="--without-shared"
+    fi
+    rm -rf "$NCBUILD"
+    mkdir -p "$NCBUILD"
+    _trace "Recreated build directory: ${NCBUILD}"
+    cflags="-I${PCRE2_ROOT}/include"
+    ldflags="-L${PCRE2_ROOT}/lib -lpcre2-posix -lpcre2-8"
+    opts="$opts \
+        --enable-named-pipes \
+        --with-pcre2 \
+        --disable-home-terminfo \
+        --disable-sp-funcs \
+        --enable-interop \
+        --with-normal \
+        --with-pkg-config \
+        --disable-symlinks \
+        --with-fallbacks=ms-terminal \
+        --without-cxx --without-ada \
+        $dynopts"
+    
+    if opt_libseparate; then
+        opts="$opts --with-termlib"
+    else
+        opts="$opts --without-termlib"
+    fi
+
+    if opt_reentrant; then
+        opts="$opts --enable-reentrant"
+    else
+        opts="$opts --disable-reentrant"
+    fi
+
+    if opt_widec; then
+        opts="$opts --enable-widec"
+    else
+        opts="$opts --disable-widec"
+    fi
+
+    if opt_debug; then
+        cflags="$cflags -g"
+        opts="$opts \
+            --with-debug \
+            --with-progs \
+            --with-tests \
+            --with-develop \
+            --with-trace \
+            --enable-asserts \
+            --enable-database \
+            --enable-db-install \
+            --enable-warnings \
+            --enable-assertions" 
+    else
+        opts="$opts \
+            --without-debug \
+            --without-progs \
+            --without-tests \
+            --without-develop \
+            --without-trace \
+            --disable-assertions \
+            --enable-db-install"
+    fi
+
+    opts="$opts --disable-leaks \
+        --disable-macros \
+        --disable-getcap \
+        --disable-hard-tabs \
+        --disable-overwrite \
+        --disable-termcap \
+        --enable-opaque-curses \
+        --enable-opaque-panel \
+        --enable-opaque-menu \
+        --enable-opaque-form \
+        --enable-pc-files"
+
+    if opt_dynamic; then
+        ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+    fi
+
+    _trace "Configuration options: ${opts}"
+
+    pushd "$NCBUILD" >/dev/null
+    CFLAGS="${cflags}" LDFLAGS="${ldflags}" \
+    ${cfg} ${opts} --prefix="/${_config_prefix}" \
+        --datadir="/${_config_prefix}/share" \
+        --srcdir="${srcdir}"
+    popd >/dev/null
+}
+
+if [ ! -f "$NCBUILD/Makefile" ]; then
+    do_config
+fi
+make -j$(nproc) -C "$NCBUILD"
+
+exit 0

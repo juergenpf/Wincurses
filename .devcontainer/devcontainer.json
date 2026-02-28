@@ -1,0 +1,35 @@
+{
+  "name": "Debian SID Windows Cross (MSVCRT + UCRT)",
+
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+
+
+  "mounts": [
+      "type=bind,source=${env:SSH_AUTH_SOCK},target=/ssh-agent"
+  ],
+  "remoteEnv": {
+    "SSH_AUTH_SOCK": "/ssh-agent"
+  },
+  
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+          "ms-vscode.cpptools",
+	        "ms-vscode.cpptools-extension-pack",
+          "ms-azuretools.vscode-docker",
+          "eamodio.gitlens",
+          "vadimcn.vscode-lldb"
+      ]
+    }
+  },
+
+  "postCreateCommand": "sudo apt-get update"
+}
