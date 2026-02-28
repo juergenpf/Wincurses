@@ -1,8 +1,8 @@
 # See the License.md file at the root of the repository for licensing information.
 #
-# We use Debian SID because it has support for MinGW32 UCRT target compilers and is 
+# I use Debian SID because it has support for MinGW32 UCRT target compilers and is 
 # generally more up-to-date than stable releases. The "slim" variant is used to 
-# reduce the image size, and we only install the necessary packages for building 
+# reduce the image size, and I only install the necessary packages for building 
 # and testing ncurses, as well as the LLVM MinGW toolchain and PCRE2 dependencies.
 FROM debian:sid-slim
 
@@ -17,7 +17,7 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries \
 
 # Set timezone to avoid tzdata prompts during package installation
 # Please adjust this to your local timezone if needed, or set it to 
-#UTC for a more generic configuration
+# UTC for a more generic configuration
 ENV TZ=Europe/Berlin
 
 # --------------------------------------------------
@@ -81,7 +81,7 @@ RUN curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MING
 
 # ----------------------------------------------------------------------------
 # PCRE2 builds
-# We use a static minimal build of PCRE2 for use in libform's fty_regex.c 
+# I use a static minimal build of PCRE2 for use in libform's fty_regex.c 
 # Using a static version avoids runtime DLL dependencies when building DLLs.
 # ----------------------------------------------------------------------------
 
