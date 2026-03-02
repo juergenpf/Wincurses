@@ -15,12 +15,7 @@
   "remoteUser": "vscode",
   "updateRemoteUserUID": true,
 
-  "mounts": [
-      "@SSHMOUNT@"
-  ],
-  "remoteEnv": {
-    "SSH_AUTH_SOCK": "/ssh-agent"
-  },
+  @SSHMOUNT@
   
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 

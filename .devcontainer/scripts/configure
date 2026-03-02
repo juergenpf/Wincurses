@@ -17,7 +17,7 @@ case "$(uname -s)" in
     Darwin*)
         SSHMOUNT='source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind'
         LOCALE="$(defaults read -g AppleLocale).UTF-8"
-        TIMEZONE=$(systemsetup -gettimezone | awk '{print $3}')
+        TIMEZONE=$(sudo systemsetup -gettimezone | awk '{print $3}')
         ;;
     Linux*)
         uname -r | grep -q WSL2
@@ -29,7 +29,7 @@ case "$(uname -s)" in
             echo "EXTERNAL_REPO_NAME='$WORKSPACE'" >> "${WORKSPACE}/.wslpath"
             echo "WSL_DISTRO_NAME='$DISTRO'" >> "${WORKSPACE}/.wslpath"
         fi
-        SSHMOUNT='source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind'
+        SSHMOUNT='mounts": [ "source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind" ], "containerEnv": {"SSH_AUTH_SOCK": "/ssh-agent"},'
         LOCALE=$(locale | grep -E '^(LC_ALL|LANG)=' | head -n1 | cut -d= -f2)
         [[ "$LOCALE" == *.UTF-8 ]] || LOCALE="${LOCALE}.UTF-8"
         TIMEZONE=$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')
