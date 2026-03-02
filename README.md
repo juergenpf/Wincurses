@@ -2,23 +2,23 @@
 
 ## Introduction
 
-Welcome to Project Wincurses. The purpose of this Project is to provide a [devcontainer](https://containers.dev/) - usually used with [Visual Studio Code](https://code.visualstudio.com/) - that provides the toolchains to cross-compile [ncurses](https://invisible-island.net/ncurses/) on [Linux](https://www.linux.org/) for the [Windows](https://www.microsoft.com/en-US/windows) platform, targeting different C-Runtimes and CPU architectures (Intel and ARM).
+Welcome to Project Wincurses. The purpose of this Project is to establish a [devcontainer](https://containers.dev/) - usually used with [Visual Studio Code](https://code.visualstudio.com/) (short: `VS Code`) - that provides the toolchains to cross-compile [ncurses](https://invisible-island.net/ncurses/) on [Linux](https://www.linux.org/) for the [Windows](https://www.microsoft.com/en-US/windows) platform, targeting different C-Runtimes and CPU architectures (Intel and ARM).
 
 Please note that the status of this project is pre-release, but I'm sharing it because it is usable already and might be helpful for your attempts to build ncurses for Windows. Any suggestions or contributions are highly welcome.
 
-The devcontainer is based on [Debian SID](https://www.debian.org/releases/sid/), because Debian with its next release will  support the modern [UCRT (Universal C-RunTime) based toolchain](https://packages.debian.org/unstable/gcc-mingw-w64-ucrt64) of the [MinGW](https://www.mingw-w64.org/) project. Traditionally, MinGW only supported the outdated MSVCRT C-Runtime, which lacks some features of the C99 Standard and also has no support for [UTF-8](https://en.wikipedia.org/wiki/UTF-8) locales, so it is not really suitable for wide character builds of ncurses. UCRT is much more profound in supporting [Unicode](https://en.wikipedia.org/wiki/Unicode).
+The devcontainer is based on [Debian SID](https://www.debian.org/releases/sid/), because Debian with its next release will  support the modern [UCRT (Universal C-RunTime) based toolchain](https://packages.debian.org/unstable/gcc-mingw-w64-ucrt64) of the [MinGW](https://www.mingw-w64.org/) project. Historically, MinGW only supported the outdated MSVCRT C-Runtime, which lacks some features of the C99 Standard and also has no support for [UTF-8](https://en.wikipedia.org/wiki/UTF-8) locales, so it is not really suitable for wide character builds of ncurses. UCRT is much more profound in supporting [Unicode](https://en.wikipedia.org/wiki/Unicode).
 
-Wincurses favours a [GCC](https://gcc.gnu.org/)-first approach. Whenever possible, a target will be compiled using gcc. At the moment, there is only one target, where gcc is not supported: [Windows on ARM](https://learn.microsoft.com/en-US/windows/arm/overview). For that purpose, I have also installed a [clang/llvm](https://clang.llvm.org/) toolchain targeting windows. I integrated Martin Storsjö's excellent [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) toolchain into the devcontainer.
+Wincurses favours a [GCC](https://gcc.gnu.org/)-first approach. Whenever possible, a target will be compiled using gcc. At the moment, there is only one target, where gcc is not supported: [Windows on ARM](https://learn.microsoft.com/en-US/windows/arm/overview). For that purpose, I have also included a [clang/llvm](https://clang.llvm.org/) toolchain targeting Windows. I integrated Martin Storsjö's excellent [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) toolchain into the devcontainer.
 
 This project is for developers primarily; it doesn't focus on building deployable results, at least not yet.
 
 ## The Motivation
 
-The key part of the repository is the devcontainer definition itself in the usual .devcontainer directory, and the core logic for my build system is in the Scripts subdirectory. I do not have the ncurses sources in this repository; instead, there is a git submodule ncurses that links to [my snapshot of ncurses](https://github.com/juergenpf/ncurses-snapshots), which is a fork of Thomas Dickey's [official GitHub snapshot of ncurses](https://github.com/ThomasDickey/ncurses-snapshots). I keep the main branch of my fork typically in sync with the official snapshot, which is updated weekly. For a variety of reasons, the ncurses development repo is not git, but a private RCS repo that is synchronized to GitHub. You can see and feel: ncurses is a project developed and maintained by Oldies ;-)
+The key part of the repository is the devcontainer definition itself in the usual .devcontainer directory, and the core logic for my build system is in the Scripts subdirectory. I do not have the ncurses sources replicated in this repository. Instead, there is a git submodule ncurses that links to [my snapshot of ncurses](https://github.com/juergenpf/ncurses-snapshots), which is a fork of Thomas Dickey's [official GitHub snapshot of ncurses](https://github.com/ThomasDickey/ncurses-snapshots). I keep the main branch of my fork typically in sync with the official snapshot, which is updated weekly. For a variety of reasons, the ncurses development repo is not git, but a private RCS repo that is synchronized to GitHub. You can see and feel: ncurses is a project developed and maintained by Oldies ;-)
 
-The reason why I use my own snapshot as a submodule is that I'm actually developing on that fork. As some of you may know, I am one of the major contributors to ncurses since 1995 or so, and I also developed the Windows port at a time when there was no modern Virtual Terminal-based Console API in Windows. That worked for the upper layers of ncurses, but many people install ncurses and actually want to use terminfo, and that was not supported at all by the Windows port—simply because the old Windows Console was a display device, not a Terminal (tty character device) like in the UNIX architecture. In 2018, Microsoft introduced a new Console Architecture that provides support for UNIX-like Pseudo-Terminals which can process ANSI-compliant virtual terminal control sequences. Back then, I integrated that into the existing legacy architecture. It worked somehow, but had its deficits—mainly because I tried to keep things as unified as possible between the new Windows Console world and the legacy one, and several design and implementation decisions were plain wrong or at least questionable, mainly due to the lack of proper documentation about the new architecture from Microsoft in those early days and my lack of understanding it or guessing it correctly.
+The reason why I use my own snapshot as a submodule is that I'm actually developing on that fork. As some of you may know, I am one of the major contributors to ncurses since 1995 or so, and I also developed the Windows port at a time when there was no modern Virtual Terminal based Console API in Windows. That worked for the upper layers of ncurses, but many people install ncurses and actually want to use terminfo, and that was not supported at all by the Windows port — simply because the old Windows Console was a display device, not a Terminal (tty character device) like in the UNIX architecture. In 2018, Microsoft introduced a new Console Architecture that provides support for UNIX-like Pseudo-Terminals which can process ANSI-compliant virtual terminal control sequences. Back then, I integrated that into the existing legacy architecture. It worked somehow, but had its deficits — mainly because I tried to keep things as unified as possible between the new Windows Console world and the legacy one, and several design and implementation decisions were plain wrong or at least questionable, mainly due to the lack of proper documentation about the new architecture from Microsoft in those early days and my lack of understanding it or guessing it correctly. It is very unpleasant to maintain this mixed codebase.
 
-Now even Windows 10 is no longer a supported platform, and me feeling uncomfortable to be the person behind the current less favourable mixed implementation, I decided to come up with a rewrite of the Windows Port which will completely drop the legacy support and will only be based on the modern Console-Pseudo-Terminal (CONPTY) architecture, and try to stay as close as possible in that I/O model and terminal abstraction. For me, this was a big move, as I retired in 2019 and did little coding on larger projects since then, more focusing on trying out stuff I never touched before intensively in my professional life (like coding in Haskell or diving into the RISC-V architecture).
+Now even Windows 10 is no longer a supported platform, and me feeling uncomfortable to be the person behind the current less favourable mixed implementation, I decided to come up with a rewrite of the Windows Port which will completely drop the legacy support and will only be based on the modern Console-Pseudo-Terminal (CONPTY) architecture, and try to stay as close as possible in that I/O model and virtual pseudo-terminal abstraction. For me, this was a big move, as I retired in 2019 and did little coding on larger projects since then, more focusing on trying out stuff I never touched before intensively in my professional life (like coding in Haskell or diving into the RISC-V architecture).
 
 This development happens on the branch conpty of the ncurses git submodule. So, if you want to build ncurses for Windows and follow the current development, you should use that branch. I merge that with the weekly snapshots, and the merge points are tagged with tags named conptyYYYYMMDD (where YYYYMMDD is the time of the patch release of the official ncurses repository).
 
@@ -26,7 +26,7 @@ The main reason I want to do development on a Linux platform using cross-compile
 
 So I invested into setting up this devcontainer, and using it now for a while, I can say it was worth every minute doing that in parallel to the ncurses development.
 
-And even if you are not interested in the development, you may find it valuable just because it can build out-of-the-box all the variants for different C-Runtimes and hardware architectures.
+And even if you are not interested in the development, you may find it valuable, just because it can build out-of-the-box all the variants for different C-Runtimes and hardware architectures.
 
 ## Get started
 
@@ -46,7 +46,7 @@ $ cd ../..
 $ code .
 ```
 
-This will bring up Visual Studio Code (aka vscode), assuming it is installed on your system. vscode will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and vscode connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
+This will bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
 
 If everything worked as expected, you should see
 
@@ -78,7 +78,7 @@ But now it's time to talk about the scripts.
 `ncbuild` is the core script of our build system. It provides options to let you choose between:
 
 - Debug and NoDebug builds (default is Debug)
-- Builds for ANSI codepages or wide codepages (default is wide)
+- Builds for ASCII codepages or wide codepages (default is wide)
 - Build for MSVCRT or UCRT (default is UCRT)
 - Build for x86_64, i686, or aarch64 (default is x86_64)
 - Build static or dynamic libraries (default is static)
@@ -155,7 +155,7 @@ When the default debug build option is selected, we will compile the library wit
 
 If the `--nodebug` option is selected, the diagnostic and debug options are mostly **not** configured and we don't build the tests. The output will be in a subdirectory `release` under the top level `build` directory.
 
-Please not that in both cases **nothing** gets installed. The top-level `inst` directory is not used at the moment, I'll add installation in a later release. The goal is to install in a way that is ready for packaging.
+Please note that in both cases **nothing** gets installed. The top-level `inst` directory is not used at the moment, I'll add installation in a later release. The goal is to install in a way that is ready for packaging.
 
 You may ask how you can test if nothing is installed, because there is no `terminfo` library available. That actually doesn't matter as the libraries are built with `ms-terminal` as a fallback terminal description in case no database could be discovered.
 

@@ -425,5 +425,5 @@ if [ ! -f "$NCBUILD/Makefile" ]; then
     do_config
 fi
 make -j$(nproc) -C "$NCBUILD"
-
+[ $? -ne 0 ] && _fail "Build failed"
 exit 0

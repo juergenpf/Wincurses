@@ -2,6 +2,7 @@
 # See License.md in the project root for license information.
 #
 SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
+WORKSPACE=$(dirname $(dirname "$SCRIPT"))
 
 if [ -f /.dockerenv ]; then
     echo "Please do not run this command inside the container." >&2
@@ -9,6 +10,7 @@ if [ -f /.dockerenv ]; then
 fi
 
 SSHMOUNT=
+WSL2PATH=
 
 case "$(uname -s)" in
     Darwin*)
@@ -19,7 +21,9 @@ case "$(uname -s)" in
     Linux*)
         uname -r | grep -q WSL2
         if [ $? -eq 0 ]; then
-	    true
+            WSL2PATH="//wsl\$/${WSL_DISTRO_NAME}${WORKSPACE}"
+	    echo "# This file is generated. Please don't modify or remove it" > "${WORKSPACE}/.wslpath" 
+            echo "WSLPATH='$WSL2PATH'" >> "${WORKSPACE}/.wslpath"
         fi
         SSHMOUNT='source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind'
         LOCALE=$(locale | grep -E '^(LC_ALL|LANG)=' | head -n1 | cut -d= -f2)
@@ -32,11 +36,14 @@ case "$(uname -s)" in
         ;;
 esac
 
-if [ -f "$SCRIPT/../devcontainer.json.in" ]; then
-    cat "$SCRIPT/../devcontainer.json.in" | \
+[ -n "$TIMEZONE" ] || TIMEZONE="UTC"
+[ -n "$LOCALE" ]   || LOCALE="en_US.UTF-8"
+
+if [ -f "${SCRIPT}/../devcontainer.json.in" ]; then
+    cat "${SCRIPT}/../devcontainer.json.in" | \
         sed "s|@SSHMOUNT@|$SSHMOUNT|g" | \
         sed "s|@LOCALE@|$LOCALE|g" | \
-        sed "s|@TZ@|$TIMEZONE|g" 
+        sed "s|@TZ@|$TIMEZONE|g" > "${SCRIPT}/../devcontainer.json"
 else
     echo "Error: devcontainer.json.in not found in $SCRIPT/../" >&2
     exit 1
