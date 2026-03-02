@@ -10,6 +10,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG LOCALE
 ARG TZ
+ARG EXTERNAL_REPO_PATH
+ARG WSL_DISTRO_NAME
 
 # --------------------------------------------------
 # APT performance + SID stability
@@ -22,6 +24,16 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries \
 # Please adjust this to your local timezone if needed, or set it to 
 # UTC for a more generic configuration
 ENV TZ=$TZ
+
+# For reference and using it in a WSL2 scenario we pass the path of the
+# repository in the local environment to the container. In non-WSL2 scenarios
+# this is not used and can be ignored.
+ENV EXTERNAL_REPO_PATH=$EXTERNAL_REPO_PATH
+
+# In a WSL2 scenario we need to know the name of the distribution in order to
+# generate Pathnames that are usable in Windows test and debugging contexts.
+# On non WSL2 systems this is not set and can be ignored.
+ENV WSL_DISTRO_NAME=$WSL_DISTRO_NAME
 
 # --------------------------------------------------
 # Base build and convenience tools

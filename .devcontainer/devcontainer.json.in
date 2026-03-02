@@ -6,7 +6,9 @@
     "context": "..",
     "args": {
       "TZ" : "@TZ@",
-      "LOCALE": "@LOCALE@"
+      "LOCALE": "@LOCALE@",
+      "EXTERNAL_REPO_PATH": "@REPOPATH@",
+      "WSL_DISTRO_NAME": "@DISTRO@"
     }
   },
 
