@@ -48,7 +48,13 @@ $ code .
 ```
 The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. And there are differences between Linux and MacOS how the ssh agent-forwarding needs to be configured for the devcontainer, so you can use git operations against github from within the devcontainer with your ssh key.
 
-The final "`code .`" will bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
+On MacOS we can not do a bind mount of the local ssh-agent socket into the container. There you must configure VS Code to handle ssh agent forwarding for you. Open the command palette and type "`Remote.SSH`". You should see "`Remote-SSH:Settings`" beeing offered in the drop-down selection. Open that settings dialog and set two options to these values:
+- remote.SSH.EnableAgentForwarding: true
+- remote.SSH.useLocalServer: false
+
+with these settings, VS Code on MacOS will handle the minimum required to allow you to access github.
+
+The final "`code .`" will now bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
 
 If everything worked as expected, you should see
 
