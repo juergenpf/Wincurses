@@ -8,6 +8,9 @@ FROM debian:sid-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ARG LOCALE
+ARG TZ
+
 # --------------------------------------------------
 # APT performance + SID stability
 # --------------------------------------------------
@@ -18,7 +21,7 @@ RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries \
 # Set timezone to avoid tzdata prompts during package installation
 # Please adjust this to your local timezone if needed, or set it to 
 # UTC for a more generic configuration
-ENV TZ=Europe/Berlin
+ENV TZ=$TZ
 
 # --------------------------------------------------
 # Base build and convenience tools
@@ -60,13 +63,13 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone &
         g++-mingw-w64 \
         binutils-mingw-w64 \
     && rm -rf /var/lib/apt/lists/* \
-    && sed -i 's/# de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen \
-    && locale-gen de_DE.UTF-8
+    && sed -i "s/# $LOCALE UTF-8/$LOCALE UTF-8/" /etc/locale.gen \
+    && locale-gen $LOCALE
 
 # Set German locale as default (adjust if needed)
-ENV LANG=de_DE.UTF-8
-ENV LANGUAGE=de_DE:de
-ENV LC_ALL=de_DE.UTF-8
+ENV LANG=$LOCALE
+ENV LANGUAGE=$LOCALE
+ENV LC_ALL=$LOCALE
 
 # --------------------------------------------------
 # llvm-mingw (Used for ARM64 builds only)

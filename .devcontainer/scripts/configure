@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# See License.md in the project root for license information.
+#
+SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
+
+if [ -f /.dockerenv ]; then
+    echo "Please do not run this command inside the container." >&2
+    exit 1
+fi
+
+SSHMOUNT=
+
+case "$(uname -s)" in
+    Darwin*)
+        SSHMOUNT='source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind'
+        LOCALE="$(defaults read -g AppleLocale).UTF-8"
+        TIMEZONE=$(systemsetup -gettimezone | awk '{print $3}')
+        ;;
+    Linux*)
+        uname -r | grep -q WSL2
+        if [ $? -eq 0 ]; then
+	    true
+        fi
+        SSHMOUNT='source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind'
+        LOCALE=$(locale | grep -E '^(LC_ALL|LANG)=' | head -n1 | cut -d= -f2)
+        [[ "$LOCALE" == *.UTF-8 ]] || LOCALE="${LOCALE}.UTF-8"
+        TIMEZONE=$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')
+        ;;
+    *)
+        echo "Unsupported OS" >&2
+        exit 1
+        ;;
+esac
+
+if [ -f "$SCRIPT/../devcontainer.json.in" ]; then
+    cat "$SCRIPT/../devcontainer.json.in" | \
+        sed "s|@SSHMOUNT@|$SSHMOUNT|g" | \
+        sed "s|@LOCALE@|$LOCALE|g" | \
+        sed "s|@TZ@|$TIMEZONE|g" 
+else
+    echo "Error: devcontainer.json.in not found in $SCRIPT/../" >&2
+    exit 1
+fi
+
+exit 0
