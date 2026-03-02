@@ -321,6 +321,19 @@ else
 fi  
 _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
 
+gen_gdbinit() {
+    local d
+    local p 
+    pushd "$NC_WORKSPACE" >/dev/null
+    for p in $(for d in ncurses panel menu form test; do find ncurses/$d -type d ; done | grep -v package)
+    do
+        echo "directory //wsl\$/${WSL_DISTRO_NAME}${EXTERNAL_REPO_PATH}/${p}"
+    done
+    echo "directory //wsl\$/${WSL_DISTRO_NAME}${EXTERNAL_REPO_PATH}/build/$(relative_builddir)/include"
+    echo "break main"
+    popd >/dev/null
+}
+
 do_config() {
     local srcdir=$NC_WORKSPACE/ncurses
     local cfg=$srcdir/configure
@@ -426,4 +439,10 @@ if [ ! -f "$NCBUILD/Makefile" ]; then
 fi
 make -j$(nproc) -C "$NCBUILD"
 [ $? -ne 0 ] && _fail "Build failed"
+
+if in_wsl2 && opt_debug ; then
+    gen_gdbinit > ${NCBUILD}/test/.gdbinit
+    _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
+fi
+
 exit 0
