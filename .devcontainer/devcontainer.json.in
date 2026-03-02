@@ -7,7 +7,7 @@
     "args": {
       "TZ" : "@TZ@",
       "LOCALE": "@LOCALE@",
-      "EXTERNAL_REPO_PATH": "@REPOPATH@",
+      "ORIGINAL_REPO_PATH": "@REPOPATH@",
       "WSL_DISTRO_NAME": "@DISTRO@"
     }
   },

@@ -10,7 +10,7 @@ if [ -f /.dockerenv ]; then
 fi
 
 SSHMOUNT=
-WSL2PATH=
+MSYS2PATH=
 DISTRO=
 
 case "$(uname -s)" in
@@ -22,11 +22,13 @@ case "$(uname -s)" in
         uname -r | grep -q WSL2
         if [ $? -eq 0 ]; then
             DISTRO=$WSL_DISTRO_NAME
-            WSL2PATH="//wsl\$/${WSL_DISTRO_NAME}${WORKSPACE}"
-	        echo "# This file is generated. Please don't modify or remove it" > "${WORKSPACE}/.wslpath" 
-            echo "WSLPATH='$WSL2PATH'" >> "${WORKSPACE}/.wslpath"
-            echo "EXTERNAL_REPO_NAME='$WORKSPACE'" >> "${WORKSPACE}/.wslpath"
-            echo "WSL_DISTRO_NAME='$DISTRO'" >> "${WORKSPACE}/.wslpath"
+            MSYS2PATH="//wsl\$/${WSL_DISTRO_NAME}${WORKSPACE}"
+            T="${WORKSPACE}/.wslpath"
+	        echo "# This file is generated. Please don't modify or remove it" > "$T"
+            echo "WSL_DISTRO_NAME='$DISTRO'" >> "$T"
+            echo "ORIGINAL_REPO_PATH='$WORKSPACE'" >> "$T"
+            echo "MSYS2_REPO_PATH='$MSYS2PATH'" >> "$T"
+            echo "WIN_REPO_PATH='$(wslpath -w $WORKSPACE)'" >> "$T"
         fi
         SSHMOUNT='"mounts": [ "source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind" ], "containerEnv": {"SSH_AUTH_SOCK": "/ssh-agent"},'
         LOCALE=$(locale | grep -E '^(LC_ALL|LANG)=' | head -n1 | cut -d= -f2)

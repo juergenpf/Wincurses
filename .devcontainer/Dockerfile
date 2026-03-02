@@ -10,7 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG LOCALE
 ARG TZ
-ARG EXTERNAL_REPO_PATH
+ARG ORIGINAL_REPO_PATH
 ARG WSL_DISTRO_NAME
 
 # --------------------------------------------------
@@ -28,7 +28,7 @@ ENV TZ=$TZ
 # For reference and using it in a WSL2 scenario we pass the path of the
 # repository in the local environment to the container. In non-WSL2 scenarios
 # this is not used and can be ignored.
-ENV EXTERNAL_REPO_PATH=$EXTERNAL_REPO_PATH
+ENV ORIGINAL_REPO_PATH=$ORIGINAL_REPO_PATH
 
 # In a WSL2 scenario we need to know the name of the distribution in order to
 # generate Pathnames that are usable in Windows test and debugging contexts.
