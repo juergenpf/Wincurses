@@ -237,7 +237,7 @@ build_prefix() {
     fi
     if opt_woa; then
         arch=aarch64
-        _config_prefix=mingw64
+        _config_prefix=ucrt64
     elif opt_x86; then
         arch=i686
         _config_prefix=mingw32
