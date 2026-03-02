@@ -30,7 +30,7 @@ And even if you are not interested in the development, you may find it valuable,
 
 ## Get started
 
-If you are new to devcontainers with Visual Studio Code, I recommend reading the ["Getting started" on GitHub](https://microsoft.github.io/code-with-engineering-playbook/developer-experience/devcontainers-getting-started/).
+If you are new to devcontainers with VS Code, I recommend reading the ["Getting started" on GitHub](https://microsoft.github.io/code-with-engineering-playbook/developer-experience/devcontainers-getting-started/).
 
 My devcontainer definition is tested on Intel and ARM Linuxes. I personally use it in a WSL2-based Ubuntu on Windows 11. It also works on macOS with one modification: you have to remove the mounts and the RemoteEnv configurations from devcontainer.json, because Docker on macOS can't do it that way. Otherwise, the container also runs on macOS; you just can't do git push from inside the container.
 
@@ -42,11 +42,13 @@ $ cd Wincurses
 $ git submodule update --init --recursive
 $ cd ncurses
 $ git checkout conpty
-$ cd ../..
+$ cd ..
+$ ./.devcontainer/scripts/configure
 $ code .
 ```
+The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. And there are differences between Linux and MacOS how the ssh agent-forwarding needs to be configured for the devcontainer, so you can use git operations against github from within the devcontainer with your ssh key.
 
-This will bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
+The final "`code .`" will bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
 
 If everything worked as expected, you should see
 
@@ -192,3 +194,6 @@ In theory you could use [wine](https://www.winehq.org/) - which is contained in 
 - `wine` apparently has a rather incomplete console implementation. You will never get the results you'' see on a native Windows system.
 
 For these reasons I highly recomment to do testing on a Windows system. The preferred setup - the one I am using - is running this devcontainer in a Linux distribution under the WSL2 subsystem for Linux on a Windows machine. Because Windows allows navigation into the WSL2 Linux directories, you can navigate with Powershell or CMD into the directory where your test executables are and launch them under Windows. If you have msys2/mingw installed, you can even debug them there.
+
+### WSL2 specfic aspects
+You really should clone the Wincurses repository inside your WSL2 distribution and run the .devcontainer/scripts/configure script there. The script discovers that you are running  in WSL2 and adds configuration to the devcontainer that later on when running in the container allows the build scripts to generate information that is helpful to test and debug the test programs in the native Windows environment.
