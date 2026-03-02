@@ -8,7 +8,8 @@
 *.sln.docstates
 inst/
 .wslpath
-
+# This will be generated.
+.devcontainer/devcontainer.json
 
 # Build results
 NuGetBuild/
