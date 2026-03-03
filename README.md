@@ -241,11 +241,26 @@ pwct -x86 -msvcrt -Ascii
 will push you into the test directory of a 32-Bit build without wide-character support for the old MSVCRT C-Runtime. You may leave this location with a simple `Pop-Location` (alias: popd).
 Please note that these directories are all UNC directories pointing to locations in the dummy host `\\wsl.localhost` that Microsoft has implemented to allow Windows to navigate seamlessly into directories that are located in Linux Distributions running under WSL2.
 
+The next actions will only be possible, if at least you have installed a minimal `MSYS2` environment and have installed the required gdb packages 
+- mingw-w64-ucrt-x86_64-gdb
+- mingw-w64-x86_64-gdb
+- mingw-w64-i686-gdb
+
+The `Start-MinGWDebug` cmdlet accepts two switches:
+- -msvcrt
+- -x86
+
+By default, we assume x86_64 and the UCRT.
+
 Assuming you are in this directory, you can use `Start-MinGWDebug` to launch the MinGW gdb debugger to debug a Windows executable.
 ```powershell
 ncdbg ncurses.exe
 ```
-for example would debug the ncurses.exe test program. Please note, that this only works, becaus the ncbuild script, in case it detects a WSL2 environment, generates a specially crafted `.gdbinit` file in the test directory that helps gdb to find the sources. Otherweise gdb would be lost with only the source information derived from the locations in the container where the build was done. The first time you launch gdb this way, you'll see a security warning that gdb refuses this `.gdbinit` without your permission. Follow the instructions this warning gives you to allow these kind of `.gdbinit` in your environment.
+for example would debug the ncurses.exe test program compiled for the UCRT and x86_64 architecture. If you would like to debug the 32-Bit MSVCRT version, you would need to type
+```powershell
+ncdbg -x86 -msvcrt ncurses.exe
+```
+Please note, that this only works, becaus the ncbuild script, in case it detects a WSL2 environment, generates a specially crafted `.gdbinit` file in the test directory that helps gdb to find the sources. Otherweise gdb would be lost with only the source information derived from the locations in the container where the build was done. The first time you launch gdb this way, you'll see a security warning that gdb refuses this `.gdbinit` without your permission. Follow the instructions this warning gives you to allow these kind of `.gdbinit` in your environment.
 
 Therefore, if you want to debug ncurses programs, it is important to be in this 
 directory so `.gdbinit` can be found and processed.
@@ -259,4 +274,3 @@ which shoud list running all processes whose process name contains ncurses. Note
 (gdb) attach PID
 ```
 where PID is the concrete PID of your test program.
-

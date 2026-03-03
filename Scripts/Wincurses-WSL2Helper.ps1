@@ -20,7 +20,11 @@ function Get-WincursesDirectory {
 }
 
 function Get-MinGWGDBPath {
-    param()
+    param(
+        [Switch]$msvcrt
+        [Switch]$x86
+    )
+    [string]$prefix="ucrt64"
     $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MSYS2 64bit_is1"
     $installDir = (Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue).InstallLocation
 
@@ -30,8 +34,14 @@ function Get-MinGWGDBPath {
         }
     }
 
+    if ($msvcrt) {
+        $prefix="mingw64"
+        if ($x86) {
+            $prefix="mingw32"
+        }
+    }
     if (-not [string]::IsNullOrEmpty($installDir)) {
-        $gdbPath = Join-Path (Join-Path (Join-Path $installDir "mingw64") "bin") "gdb.exe"
+        $gdbPath = Join-Path (Join-Path (Join-Path $installDir $prefix) "bin") "gdb.exe"
         if (Test-Path $gdbPath -PathType Leaf) {
             return $gdbPath
         } else {
@@ -152,9 +162,11 @@ function Push-WincursesTestLocation {
 
 function Start-MinGWDebug {
     param(
-        [string]$Program
+        [string]$Program,
+        [Switch]$msvcrt,
+        [Switch]$x86
     )
-    $gdbPath = Get-MinGWGDBPath
+    $gdbPath = Get-MinGWGDBPath -msvcrt:$msvcrt -x86:$x86
     if ($gdbPath) {
         & $gdbPath $Program
     }
