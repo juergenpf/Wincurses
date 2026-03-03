@@ -1,11 +1,15 @@
 # See License.md in the project root for license information.
 
 function Get-WincursesDirectory {
+    [CmdletBinding()]
     param()
-    return '@REPOPATH@'
+    [string]$dir="@REPOPATH@"
+    Write-verbose "Wincurses directory: $dir"
+    return $dir
 }
 
 function Get-MinGWGDBPath {
+    [CmdletBinding()]
     param(
         [Switch]$msvcrt,
         [Switch]$x86
@@ -29,6 +33,7 @@ function Get-MinGWGDBPath {
     if (-not [string]::IsNullOrEmpty($installDir)) {
         $gdbPath = Join-Path (Join-Path (Join-Path $installDir $prefix) "bin") "gdb.exe"
         if (Test-Path $gdbPath -PathType Leaf) {
+            Write-Verbose "Found gdb.exe at $gdbPath"
             return $gdbPath
         } else {
             Write-Error "gdb.exe not found"
@@ -38,7 +43,6 @@ function Get-MinGWGDBPath {
 }
 
 
-# Helper functions moved to top-level for proper scoping
 function ConsistencyCheck {
     param(
         [bool]$wnc_x86,
@@ -67,7 +71,7 @@ function ConsistencyCheck {
     return $true
 }
 
-function build_prefix {
+function BuildPrefix {
     param(
         [bool]$wnc_debug,
         [string]$wnc_arch
@@ -79,7 +83,7 @@ function build_prefix {
     return (Join-Path (Join-Path $prefix "WindowsCross") $wnc_arch)
 }
 
-function Get-Suffix {
+function GetSuffix {
     param(
         [bool]$wnc_reentrant,
         [bool]$wnc_wide
@@ -94,7 +98,7 @@ function Get-Suffix {
     return $suffix
 }
 
-function relative_builddir {
+function RelativeBuildDir {
     param(
         [bool]$wnc_debug,
         [string]$wnc_arch,
@@ -102,8 +106,8 @@ function relative_builddir {
         [bool]$wnc_wide,
         [string]$wnc_prefix
     )
-    $suffix = Get-Suffix -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide
-    $pre = build_prefix -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch
+    $suffix = GetSuffix -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide
+    $pre = BuildPrefix -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch
     return (Join-Path (Join-Path $pre "nc${suffix}") $wnc_prefix)
 }
 
@@ -160,11 +164,12 @@ function Push-WincursesTestLocation {
 
     $prefixRef = [ref]$wnc_prefix
     if (-not (ConsistencyCheck -wnc_x86:$wnc_x86 -wnc_woa:$wnc_woa -wnc_ucrt:$wnc_ucrt -wnc_prefix:$prefixRef)) {
+        Write-Error "Inconsistent configuration"
         return
     }
     $wnc_prefix = $prefixRef.Value
 
-    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (relative_builddir -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide -wnc_prefix:$wnc_prefix))
+    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide -wnc_prefix:$wnc_prefix))
     if (Test-Path -path $loc  -PathType Container) {
         [string]$lib = (Join-Path $loc "lib")
         if (-not $wnc_static) {
@@ -173,6 +178,7 @@ function Push-WincursesTestLocation {
         Write-Verbose "Pushing location $loc"
         push-location $loc
         if (Test-Path -Path "test" -PathType Container) {
+            write-verbose "Entering directory test"
             set-location "test"
         }
     } else {
@@ -181,6 +187,7 @@ function Push-WincursesTestLocation {
 }
 
 function Start-MinGWDebug {
+    [CmdletBinding()]
     param(
         [string]$Program,
         [Switch]$msvcrt,
