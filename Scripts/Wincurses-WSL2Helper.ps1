@@ -1,6 +1,6 @@
 # See License.md in the project root for license information.
-[string]$DEFAULT_WSL_DISTRO="Ubuntu"
-[string]$Wincurses_REPO_PATH='\\wsl.localhost\Ubuntu\home\juergen\repos\git\Wincurses'
+[string]$DEFAULT_WSL_DISTRO='@DISTRO@'
+[string]$Wincurses_REPO_PATH='@REPOPATH@'
 
 [string]$wnc_arch="x86_64"
 [string]$wnc_prefix="ucrt64"
@@ -17,6 +17,28 @@
 function Get-WincursesDirectory {
     param()
     return $Wincurses_REPO_PATH
+}
+
+function Get-MinGWGDBPath {
+    param()
+    $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MSYS2 64bit_is1"
+    $installDir = (Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue).InstallLocation
+
+    if ([string]::IsNullOrEmpty($installDir)) {
+        if (Test-Path "${Env:SystemDrive}\msys64") { 
+            $installDir = "${Env:SystemDrive}\msys64" 
+        }
+    }
+
+    if (-not [string]::IsNullOrEmpty($installDir)) {
+        $gdbPath = Join-Path (Join-Path (Join-Path $installDir "mingw64") "bin") "gdb.exe"
+        if (Test-Path $gdbPath -PathType Leaf) {
+            return $gdbPath
+        } else {
+            Write-Error "gdb.exe not found"
+        }
+    }
+    return $null
 }
 
 function Set-WincursesTestLocation {
@@ -117,6 +139,10 @@ function Set-WincursesTestLocation {
 
    [string]$loc=(Join-Path (Join-Path (Get-WincursesDirectory) "build") (relative_builddir))
    if (Test-Path -path $loc  -PathType Container) {
+       [string]$lib=(Join-Path $loc "lib")
+       if (-not $wnc_static) {
+           $Env:PATH="$lib;$Env:PATH"
+       }
         push-location $loc
         if (Test-Path -Path "test" -PathType Container) {
             set-location "test"
@@ -124,4 +150,18 @@ function Set-WincursesTestLocation {
    }
 }
 
+function Start-MinGWDebug {
+    param(
+        [string]$Program
+    )
+    $gdbPath = Get-MinGWGDBPath
+    if ($gdbPath) {
+        & $gdbPath $Program
+    }
+    else {
+            Write-Error "gdb.exe not found"
+    }
+}
+
 Set-Alias cdwct Set-WincursesTestLocation
+Set-Alias ncdbg Start-MinGWDebug

@@ -321,16 +321,20 @@ else
 fi  
 _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
 
+# When we are running in WSL2, we need to generate a .gdbinit file that contains 
+# the correct paths to the repository and the WSL distribution name. This file 
+# will be used by GDB to set up the environment for debugging Wincurses in Windows.
+# This is necessary because we compile inside the container and gdb cannont generate
+# source file references that are resolvable under Windows later on.
 gen_gdbinit() {
     local d
     local p 
     pushd "$NC_WORKSPACE" >/dev/null
     for p in $(for d in ncurses panel menu form test; do find ncurses/$d -type d ; done | grep -v package)
     do
-        echo "directory //wsl\$/${WSL_DISTRO_NAME}${EXTERNAL_REPO_PATH}/${p}"
+        echo "directory //wsl\$/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/${p}"
     done
-    echo "directory //wsl\$/${WSL_DISTRO_NAME}${EXTERNAL_REPO_PATH}/build/$(relative_builddir)/include"
-    echo "break main"
+    echo "directory //wsl\$/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/build/$(relative_builddir)/include"
     popd >/dev/null
 }
 
@@ -432,11 +436,29 @@ do_config() {
         --datadir="/${_config_prefix}/share" \
         --srcdir="${srcdir}"
     popd >/dev/null
+    if ! opt_dynamic; then
+        echo "S" > "$NCBUILD/.static"
+        rm -f "$NCBUILD/.dynamic"
+    else
+        echo "D" > "$NCBUILD/.dynamic"
+        rm -f "$NCBUILD/.static"
+    fi
 }
 
 if [ ! -f "$NCBUILD/Makefile" ]; then
     do_config
+else
+    if ! opt_dynamic && [ -f "$NCBUILD/.dynamic" ]; then
+        _trace "Configuration mismatch: previously configured for dynamic, now static. Reconfiguring..."
+        do_config
+    elif opt_dynamic && [ -f "$NCBUILD/.static" ]; then
+        _trace "Configuration mismatch: previously configured for static, now dynamic. Reconfiguring..."
+        do_config
+    else
+        _trace "Existing configuration matches current options. Skipping configuration step."
+    fi
 fi
+
 make -j$(nproc) -C "$NCBUILD"
 [ $? -ne 0 ] && _fail "Build failed"
 
