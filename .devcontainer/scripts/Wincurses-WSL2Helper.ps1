@@ -21,7 +21,7 @@ function Get-WincursesDirectory {
 
 function Get-MinGWGDBPath {
     param(
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
         [Switch]$x86
     )
     [string]$prefix="ucrt64"
