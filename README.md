@@ -202,4 +202,61 @@ In theory you could use [wine](https://www.winehq.org/) - which is contained in 
 For these reasons I highly recomment to do testing on a Windows system. The preferred setup - the one I am using - is running this devcontainer in a Linux distribution under the WSL2 subsystem for Linux on a Windows machine. Because Windows allows navigation into the WSL2 Linux directories, you can navigate with Powershell or CMD into the directory where your test executables are and launch them under Windows. If you have msys2/mingw installed, you can even debug them there.
 
 ### WSL2 specfic aspects
-You really should clone the Wincurses repository inside your WSL2 distribution and run the .devcontainer/scripts/configure script there. The script discovers that you are running  in WSL2 and adds configuration to the devcontainer that later on when running in the container allows the build scripts to generate information that is helpful to test and debug the test programs in the native Windows environment.
+You really should clone the Wincurses repository inside your WSL2 distribution and run the `.devcontainer/scripts/configure` script there. The script discovers that you are running  in WSL2 and adds configuration to the devcontainer that later on when running in the container allows the build scripts to generate information that is helpful to test and debug the test programs in the native Windows environment.
+When running `.devcontainer/scripts/configure` under WSL2, a Powershell Helperfile will be copied into the Windows directory that contains your Powershell `$PROFILE`. You should include this helper file into your profile, e.g. by doing this:
+Open a Windows Terminal session with Powershell or use your preferred mthod to open a Powershell Terminal session, and type
+```powershell
+notepad $PROFILE
+```
+or use your editor of choice instead of notepad. Inside the profile script, add these lines:
+```powershell
+$wnchelper=(Join-Path (Split-Path $PROFILE) "Wincurses-WSL2Helper.ps1")
+if (Test-Path -Path "$wnchelper" -PathType Leaf) {
+    . "$wnchelper"
+}
+```
+When you now open a new Powershell Terminal session, this helperfile will be included and add two new cmdlets:
+- Set-WincursesTestLocation (alias: pwct)
+- Start-MinGWDebug (alias: ncdbg)
+
+The Push-WincursesTestLocation accepts these switches:
+- -Ascii
+- -Reentrant
+- -Nodebug
+- -x86
+- -WoA
+- -Dynamic
+- -Libseparate
+- -msvcrt
+
+They have the same meaning as with ncbuild, but in this case they are only used to compute the name of the build directory used for the configuration you selected by the choice of options. Please not, that Powershell always uses the long names for the options, but only with a single '-' in front of the option.
+So, if you use the alias `pwct`, when you type in Powershell
+```powershell
+pwct
+```
+without any options, you will be pushed into the test directory of the build for x86_64 UCRT with wide character support.
+```powershell
+pwct -x86 -msvcrt -Ascii
+```
+will push you into the test directory of a 32-Bit build without wide-character support for the old MSVCRT C-Runtime. You may leave this location with a simple `Pop-Location` (alias: popd).
+Please note that these directories are all UNC directories pointing to locations in the dummy host `\\wsl.localhost` that Microsoft has implemented to allow Windows to navigate seamlessly into directories that are located in Linux Distributions running under WSL2.
+
+Assuming you are in this directory, you can use `Start-MinGWDebug` to launch the MinGW gdb debugger to debug a Windows executable.
+```powershell
+ncdbg ncurses.exe
+```
+for example would debug the ncurses.exe test program. Please note, that this only works, becaus the ncbuild script, in case it detects a WSL2 environment, generates a specially crafted `.gdbinit` file in the test directory that helps gdb to find the sources. Otherweise gdb would be lost with only the source information derived from the locations in the container where the build was done. The first time you launch gdb this way, you'll see a security warning that gdb refuses this `.gdbinit` without your permission. Follow the instructions this warning gives you to allow these kind of `.gdbinit` in your environment.
+
+Therefore, if you want to debug ncurses programs, it is important to be in this 
+directory so `.gdbinit` can be found and processed.
+
+Because ncurses programs often bring the terminal into special states, when you hit a breakpoint formatted display of sources or variables or typing in commands may be strange. In most cases, it is more practical to launch the test program and then attach gdb to it. So, if you for example want to debug `ncurses.exe`, open a separate Powershell Terminal and use `pwct` to push into the test directory and simply start ncurses.exe. Then, in the window where you want to run the debugger, type this command:
+```powershell
+tasklist | findstr ncurses
+```
+which shoud list running all processes whose process name contains ncurses. Note the PID of your testprogram. Then launch ncdbg and type
+```gdb
+(gdb) attach PID
+```
+where PID is the concrete PID of your test program.
+

@@ -41,7 +41,7 @@ function Get-MinGWGDBPath {
     return $null
 }
 
-function Set-WincursesTestLocation {
+function Push-WincursesTestLocation {
     [CmdletBinding()]
     param(
         [Switch]$Ascii,
@@ -163,5 +163,5 @@ function Start-MinGWDebug {
     }
 }
 
-Set-Alias cdwct Set-WincursesTestLocation
+Set-Alias pwct Push-WincursesTestLocation
 Set-Alias ncdbg Start-MinGWDebug
