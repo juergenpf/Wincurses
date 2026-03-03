@@ -9,7 +9,7 @@ wsl_profile_helper() {
     local p=
     local profile=
     local pdir=
-    local f="${WORKSPACE}/Scripts/Wincurses-WSL2Helper.ps1"
+    local f="${SCRIPT}/Wincurses-WSL2Helper.ps1"
     local wp=$(wslpath -w "$WORKSPACE")
     local ewp=$(printf '%s' "$wp" | sed 's/\\/\\\\/g')
     [ -f "$f" ] || return 1
