@@ -43,12 +43,13 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone &
     apt-get install -y \
         ca-certificates \
         locales \
-        curl \
-        openssh-client \
-        git \
         bash \
+        bash-completion \
+        curl \
         less \
         sudo \
+        openssh-client \
+        git \
         file \
         pkg-config \
         ninja-build \
