@@ -175,6 +175,7 @@ function Push-WincursesTestLocation {
         if (-not $wnc_static) {
             $Env:PATH = "$lib;$Env:PATH"
         }
+        $Env:TERM="ms-terminal"
         Write-Verbose "Pushing location $loc"
         push-location $loc
         if (Test-Path -Path "test" -PathType Container) {
