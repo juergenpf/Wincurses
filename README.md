@@ -107,6 +107,9 @@ you'll get a static debug build of a wide ncurses for x86_64 targeting the UCRT.
 ~~~
   -a, --ascii           Build ASCII version (disable wide character support)
   -t, --reentrant       Build reentrant version
+  -i, --interop         Build with Windows interop features enabled. Only to be used with -N|--native
+  -s, --spfuncs         Build with sp-funcs support. Only to be used with -N|--native
+  -N, --native          Build for native execution in Linux (no cross-compilation)
   -m, --msvcrt          Build with MSVCRT instead of UCRT
   -w, --woa             Build for Windows on ARM (WOA) with UCRT
   -x, --x86             Build for x86 (i686) with MSVCRT
@@ -123,6 +126,8 @@ you'll get a static debug build of a wide ncurses for x86_64 targeting the UCRT.
 ```
 would do a static debug build of a non-wide ncurses for the i686 architecture targeting MSVCRT.
 
+The options `--spfuncs` and `--interop` are only allowed when `--native` was specified. For Windows cross-builds we have hardcoded: no sp-funcs and interop enabled.
+
 #### The options in Detail
 
 ##### -a, --ascii
@@ -130,6 +135,12 @@ The default for our build system is to do builds that have the ncurses configura
 
 ##### -t, --reentrant
 The default is to build libraries without reentrancy support (`--disable-reentrant`). With this option, you enable `--enable-reentrant`.
+
+##### -s, --spfuncs
+Only relevant for native builds. It adds an additional set of functions to the ncurses API which optimise to use multiple terminals in a single application.
+
+##### -i, --interop
+Is per default enabled for Windows cross-builds. It is relevant in the forms library to ease the definition of field types when calling these routines from other languages than C, which might have problems using C constructs like va_lists.
 
 ##### -m, --msvcrt
 The default is to build for UCRT. With this option, you trigger a build for MSVCRT. This is actually only indirectly a ncurses configuration option, as it mainly selects the toolchain to be used for the build. This will be reflected in the `--host` configuration option of ncurses.
@@ -191,6 +202,17 @@ build/
   - `{config_prefix}` = mingw64, ucrt64, or mingw32
 
 - The install directory mirrors this structure under `inst/` instead of `build/`.
+
+In case of a native build we use extra suffixes for the configuration specific build directories. There we have
+ ```
+build/
+  debug/ or release/
+    linux/
+      x86_64/   (aarch64/ for ARM)
+        nc[w][t][s][i]/   (suffixes: w = widec, t = reentrant, s = sp-funcs, i = interop, all optional)
+          usr/
+            [build artifacts, Makefile, etc.]
+```
 
 This structure allows for easy separation and identification of builds for different architectures, C runtimes, and feature sets.
 
