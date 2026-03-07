@@ -274,3 +274,7 @@ which shoud list running all processes whose process name contains ncurses. Note
 (gdb) attach PID
 ```
 where PID is the concrete PID of your test program.
+
+### A pure Linux testing approach
+If you run a native Linux box (Intel based) and still want to have a conveniant test environment not requirung to copy the compiled assets to a separate physical Windows test machine, you of course can use your preferred virtualization tool and run a Windows VM on your Linux box. These tools usually allow to share folders, so it should be possible to setup a procedure that copies the build results to be tested to the Windows machine or even allow the Windows machine to directly access as network drive the build directory and access the results. One very promising tool to try that out is the [Winboat](https://www.winboat.app/) project, which some consider to be `LSW`, the Linux-Subsystem-for-Windows, the equivalent to WSL from the other site. 
+
