@@ -47,6 +47,7 @@ in_wsl2() {
 err=
 _cfgopts=0 # Count the number of options that affect the configuration
 _nondefault_opts=0 # Count the number of options that differ from the default configuration
+
 _opt_widec=1
 _opt_reentrant=0
 _opt_ucrt=1
@@ -57,6 +58,9 @@ _opt_x86=0
 _opt_verbose=0
 _opt_dynamic=0
 _opt_libseparate=0
+_opt_native=0
+_opt_interop=0
+_opt_spfuncs=0
 
 opt_widec() {
     [ $_opt_widec -ne 0 ] && return 0
@@ -103,8 +107,23 @@ opt_libseparate() {
     return 1
 }
 
+opt_native() {
+    [ $_opt_native -ne 0 ] && return 0
+    return 1
+}
+
+opt_interop() {
+    [ $_opt_interop -ne 0 ] && return 0
+    return 1
+}
+
+opt_spfuncs() {
+    [ $_opt_spfuncs -ne 0 ] && return 0
+    return 1
+}
+
 get_options() {
-    eval set -- "$(getopt -o atmwxldncvh -l ascii,reentrant,msvcrt,woa,x86,libseparate,dynamic,nodebug,clean,verbose,help -- "$@")"
+    eval set -- "$(getopt -o atisNmwxldncvh -l ascii,reentrant,interop,spfuncs,native,msvcrt,woa,x86,libseparate,dynamic,nodebug,clean,verbose,help -- "$@")"
 
     while true
     do
@@ -121,6 +140,29 @@ get_options() {
             _nondefault_opts=$(expr $_nondefault_opts + 1)
 		    shift
 		    ;;
+        -i|--interop)
+            _opt_interop=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            shift
+            ;;
+        -s|--spfuncs)
+            _opt_spfuncs=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+            shift
+            ;;
+        -N|--native)
+            _opt_native=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+            shift
+            ;;
+        -l|--libseparate)
+            _opt_libseparate=1
+            _cfgopts=$(expr $_cfgopts + 1)
+            _nondefault_opts=$(expr $_nondefault_opts + 1)
+            shift
+            ;;
 	    -m|--msvcrt)
 		    _opt_ucrt=0
 		    _cfgopts=$(expr $_cfgopts + 1)
@@ -163,6 +205,9 @@ get_options() {
             echo "Options:"
             echo "  -a, --ascii           Build ASCII version (disable wide character support)"
             echo "  -t, --reentrant       Build reentrant version"
+            echo "  -i, --interop         Build with Windows interop features enabled. Only to be used with -N|--native"
+            echo "  -s, --spfuncs         Build with sp-funcs support. Only to be used with -N|--native"
+            echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
             echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT"
             echo "  -w, --woa             Build for Windows on ARM (WOA) with UCRT"
             echo "  -x, --x86             Build for x86 (i686) with MSVCRT"
@@ -195,6 +240,18 @@ _trace() {
 }
 
 consistency_checks() {
+    if opt_spfuncs && ! opt_native; then
+        _fail "sp-funcs support is only available for native builds."
+    fi
+    if opt_interop && ! opt_native; then
+        _fail "Please specify interop only on native builds. On Windows it is implicit."
+    fi
+    if opt_native && ! opt_ucrt; then
+        _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
+    fi
+    if opt_native && (opt_x86 || opt_woa) ; then
+        _fail "--x86 or --WoA are specific for Windows cross builds and cannot be used for native builds." 
+    fi
     if opt_x86 && opt_woa; then
         _fail "x86 and WOA build options are mutually exclusive."
     fi
@@ -211,6 +268,7 @@ in_container || _fail "Not running in devcontainer."
 get_options $@
 [ -n "$err" ] && _fail "Invalid options: $err"
 
+
 _default_build=0
 [ $_nondefault_opts -eq 0 ] && _default_build=1
 if [ $_default_build -ne 0 ]; then
@@ -222,6 +280,13 @@ fi
 
 consistency_checks
 
+if ! opt_native ; then
+# On Windows we enforce interop and disable spfuncs.
+# This must be executed after consistency_checks
+    _opt_interop=1
+    _opt_spfuncs=0
+fi
+
 _relative_instroot=inst
 _relative_buildroot=build
 
@@ -229,6 +294,7 @@ build_prefix() {
     local prefix=
     local arch=$(uname -m)
     local _config_prefix=mingw64
+    local base=WindowsCross
 
     if opt_debug; then
         prefix=debug
@@ -242,11 +308,17 @@ build_prefix() {
         arch=i686
         _config_prefix=mingw32
     else
-        arch=x86_64
-        _config_prefix=mingw64
-        opt_ucrt && _config_prefix=ucrt64
-    fi  
-    prefix="${prefix}/WindowsCross/${arch}"
+        if opt_native ; then
+            arch=$(uname -m)
+            _config_prefix=usr
+            base=linux
+        else
+            arch=x86_64
+            _config_prefix=mingw64
+            opt_ucrt && _config_prefix=ucrt64
+        fi
+    fi
+    prefix="${prefix}/${base}/${arch}"
     echo "$prefix||$_config_prefix"
 }
 
@@ -257,15 +329,24 @@ get_suffix() {
     echo "$libsuffix"
 }
 
+get_extra_suffix() {
+    local suffix=
+    if opt_native; then
+        opt_spfuncs && suffix="${suffix}s"
+        opt_interop && suffix="${suffix}i"
+    fi
+    echo "$suffix"
+}
+
 relative_builddir() {
-    local suffix=$(get_suffix)
+    local suffix=$(get_suffix)$(get_extra_suffix)
     local pre=$(build_prefix)
     local config_prefix=${pre##*||}
     echo "${pre%%||*}/nc${suffix}/${config_prefix}"
 }
 
 relative_installbase() {
-    local suffix=$(get_suffix)
+    local suffix=$(get_suffix)$(get_extra_suffix)
     local pre=$(build_prefix)
     echo "${pre%%||*}/nc${suffix}"
 }
@@ -294,7 +375,7 @@ fi
 _trace "NCBUILD: ${NCBUILD}, creating..."
 mkdir -p "${NCBUILD}"
 
-NCINST=${NC_WORKSPACE}/$_relative_instroot/$(relative_installdir)
+NCINST=${NC_WORKSPACE}/$_relative_instroot/$(relative_installbase)
 if opt_clean; then
     _trace "Cleaning install directory: ${NCINST}"
     rm -rf "${NCINST}"
@@ -312,14 +393,16 @@ else
     host_bht="x86_64-w64-mingw32"
     opt_ucrt && host_bht="x86_64-w64-mingw32ucrt"
 fi
-env_file=$NC_WORKSPACE/.devcontainer/crossenvs/${host_bht}.env
-if [ -f "$env_file" ]; then
-    _trace "Sourcing cross build environment from: ${env_file}"
-    source "$env_file"
-else
-    _fail "Cross build environment file not found: ${env_file}"
-fi  
-_trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
+if ! opt_native; then
+    env_file=$NC_WORKSPACE/.devcontainer/crossenvs/${host_bht}.env
+    if [ -f "$env_file" ]; then
+        _trace "Sourcing cross build environment from: ${env_file}"
+        source "$env_file"
+    else
+        _fail "Cross build environment file not found: ${env_file}"
+    fi  
+    _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
+fi
 
 # When we are running in WSL2, we need to generate a .gdbinit file that contains 
 # the correct paths to the repository and the WSL distribution name. This file 
@@ -342,31 +425,63 @@ do_config() {
     local srcdir=$NC_WORKSPACE/ncurses
     local cfg=$srcdir/configure
     local dynopts="--with-shared"
-    local opts="--build=${build_bht} \
-        --host=${host_bht} \
-        --with-build-cc=${build_bht}-gcc \
-        --with-build-cpp=${build_bht}-cpp"
+    local opts=
     local cflags= 
     local ldflags=
+
     [ -x "$cfg" ] || _fail "Configure script not found or not executable: $cfg"
+
+    if ! opt_native ; then
+        opts="--build=${build_bht} \
+            --host=${host_bht} 
+            --with-strip-program=${STRIP} \
+            --with-build-cc=${build_bht}-gcc \
+            --with-build-cpp=${build_bht}-cpp"    
+    fi
+
     if ! opt_dynamic; then
         dynopts="--without-shared"
     fi
+    if opt_interop; then
+        opts+=" --enable-interop"
+    else
+        opts+=" --disable-interop"
+    fi
+    if opt_spfuncs; then
+        opts+=" --enable-sp-funcs"
+    else
+        opts+=" --disable-sp-funcs"
+    fi
+    if opt_reentrant; then
+        opts="$opts --enable-reentrant"
+    else
+        opts="$opts --disable-reentrant"
+    fi
+    if opt_widec; then
+        opts="$opts --enable-widec"
+    else
+        opts="$opts --disable-widec"
+    fi
+
+    if ! opt_native; then
+        opts+=" --enable-named-pipes \
+            --with-pcre2 \
+            --disable-home-terminfo \
+            --disable-symlinks \
+            --with-fallbacks=ms-terminal \
+            --without-manpages"
+    fi    
     rm -rf "$NCBUILD"
     mkdir -p "$NCBUILD"
     _trace "Recreated build directory: ${NCBUILD}"
-    cflags="-I${PCRE2_ROOT}/include"
-    ldflags="-L${PCRE2_ROOT}/lib -lpcre2-posix -lpcre2-8"
-    opts="$opts \
-        --enable-named-pipes \
-        --with-pcre2 \
-        --disable-home-terminfo \
-        --disable-sp-funcs \
-        --enable-interop \
-        --with-normal \
+
+    if ! opt_native; then
+        cflags="-I${PCRE2_ROOT}/include"
+        ldflags="-L${PCRE2_ROOT}/lib -lpcre2-posix -lpcre2-8"
+    fi
+
+    opts="$opts --with-normal \
         --with-pkg-config \
-        --disable-symlinks \
-        --with-fallbacks=ms-terminal \
         --without-cxx --without-ada \
         $dynopts"
     
@@ -374,18 +489,6 @@ do_config() {
         opts="$opts --with-termlib"
     else
         opts="$opts --without-termlib"
-    fi
-
-    if opt_reentrant; then
-        opts="$opts --enable-reentrant"
-    else
-        opts="$opts --disable-reentrant"
-    fi
-
-    if opt_widec; then
-        opts="$opts --enable-widec"
-    else
-        opts="$opts --disable-widec"
     fi
 
     if opt_debug; then
@@ -425,7 +528,11 @@ do_config() {
         --enable-pc-files"
 
     if opt_dynamic; then
-        ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+        if opt_native; then
+            ldflags="-static-libgcc -Wl,-Bdynamic"
+        else
+            ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+        fi
     fi
 
     _trace "Configuration options: ${opts}"
@@ -466,5 +573,10 @@ if in_wsl2 && opt_debug ; then
     gen_gdbinit > ${NCBUILD}/test/.gdbinit
     _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
 fi
+
+_trace "Installing to: ${NCINST}"
+make -j$(nproc) -C "$NCBUILD" install DESTDIR="$NCINST"
+[ $? -ne 0 ] && _fail "Install failed"
+rm -rf "${NCINST}/opt"
 
 exit 0

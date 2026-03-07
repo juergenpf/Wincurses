@@ -4,7 +4,6 @@ function Get-WincursesDirectory {
     [CmdletBinding()]
     param()
     [string]$dir="@REPOPATH@"
-    Write-verbose "Wincurses directory: $dir"
     return $dir
 }
 
@@ -111,6 +110,29 @@ function RelativeBuildDir {
     return (Join-Path (Join-Path $pre "nc${suffix}") $wnc_prefix)
 }
 
+function RelativeInstallBase {
+    param(
+        [bool]$wnc_debug,
+        [string]$wnc_arch,
+        [bool]$wnc_reentrant,
+        [bool]$wnc_wide
+    )
+    $suffix = GetSuffix -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide
+    $pre = BuildPrefix -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch
+    return (Join-Path $pre "nc${suffix}")
+}
+
+function RelativeInstallDir {
+    param(
+        [bool]$wnc_debug,
+        [string]$wnc_arch,
+        [bool]$wnc_reentrant,
+        [bool]$wnc_wide,
+        [string]$wnc_prefix
+    )
+    return (Join-Path (RelativeInstallBase -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide) $wnc_prefix)
+}   
+
 function Push-WincursesTestLocation {
     [CmdletBinding()]
     param(
@@ -171,11 +193,31 @@ function Push-WincursesTestLocation {
 
     [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide -wnc_prefix:$wnc_prefix))
     if (Test-Path -path $loc  -PathType Container) {
+        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide -wnc_prefix:$wnc_prefix))
         [string]$lib = (Join-Path $loc "lib")
+        [string]$bin=(Join-Path $inst "bin")
         if (-not $wnc_static) {
-            $Env:PATH = "$lib;$Env:PATH"
+            if (Test-Path -Path $bin -PathType Container) {
+                Write-Verbose "Adding $bin to PATH"
+                $Env:PATH = "$bin;$Env:PATH"
+            } else {
+                if (Test-Path -Path $lib -PathType Container) {
+                    Write-Verbose "Adding $lib to PATH"
+                    $Env:PATH = "$lib;$Env:PATH"
+                } else {
+                    Write-Error "Neither $bin nor $lib directory found"
+                }
+            }
         }
         $Env:TERM="ms-terminal"
+        Write-Verbose "Set TERM to ms-terminal"
+        [string]$tinfo=(Join-Path (Join-Path $inst "share") "terminfo")
+        if (Test-Path -Path $tinfo -pathtype Container) {
+            Write-Verbose "Setting TERMINFO to $tinfo"
+            $Env:TERMINFO=$tinfo
+        } else {    
+            write-verbose "TERMINFO directory not found, relying on fallback settings"
+        }
         Write-Verbose "Pushing location $loc"
         push-location $loc
         if (Test-Path -Path "test" -PathType Container) {

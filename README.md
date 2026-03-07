@@ -48,7 +48,7 @@ $ code .
 ```
 The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. And there are differences between Linux and MacOS how the ssh agent-forwarding needs to be configured for the devcontainer, so you can use git operations against github from within the devcontainer with your ssh key.
 
-On MacOS we can not do a bind mount of the local ssh-agent socket into the container. There you must configure VS Code to handle ssh agent forwarding for you. Open the command palette and type "`Remote.SSH`". You should see "`Remote-SSH:Settings`" beeing offered in the drop-down selection. Open that settings dialog and set two options to these values:
+On MacOS we can not do a bind-mount of the local ssh-agent socket into the container. There you must configure VS Code to handle ssh agent forwarding for you. Open the command palette and type "`Remote.SSH`". You should see "`Remote-SSH:Settings`" beeing offered in the drop-down selection. Open that settings dialog and set two options to these values:
 - remote.SSH.EnableAgentForwarding: true
 - remote.SSH.useLocalServer: false
 
@@ -163,9 +163,9 @@ When the default debug build option is selected, we will compile the library wit
 
 If the `--nodebug` option is selected, the diagnostic and debug options are mostly **not** configured and we don't build the tests. The output will be in a subdirectory `release` under the top level `build` directory.
 
-Please note that in both cases **nothing** gets installed. The top-level `inst` directory is not used at the moment, I'll add installation in a later release. The goal is to install in a way that is ready for packaging.
+After a successful build, an install will be performed into the top level inst directory. The structure of this directory mirros the one of the build directory, so every build that represents a different configuration will be installed into its own install subdirectory.
 
-You may ask how you can test if nothing is installed, because there is no `terminfo` library available. That actually doesn't matter as the libraries are built with `ms-terminal` as a fallback terminal description in case no database could be discovered.
+Even if the install fails, you may be able to run the test programs, even without insall there is no `terminfo` library available. That actually doesn't matter as the libraries are built with `ms-terminal` as a fallback terminal description in case no database could be discovered. 
 
 ### Build and Install Directory Layout
 
