@@ -1,4 +1,16 @@
-# See License.md in the project root for license information.
+# Copyright (c) 2026 Juergen Pfeifer.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 function Get-WincursesDirectory {
     [CmdletBinding()]
@@ -136,13 +148,13 @@ function RelativeInstallDir {
 function Push-WincursesTestLocation {
     [CmdletBinding()]
     param(
-        [Switch]$Ascii,
-        [Switch]$Reentrant,
-        [Switch]$Nodebug,
+        [Switch]$ascii,
+        [Switch]$reentrant,
+        [Switch]$nodebug,
         [Switch]$x86,
-        [Switch]$WoA,
-        [Switch]$Dynamic,
-        [Switch]$LibSeparate,
+        [Switch]$woa,
+        [Switch]$dynamic,
+        [Switch]$libSeparate,
         [Switch]$msvcrt
     )
 
@@ -164,23 +176,23 @@ function Push-WincursesTestLocation {
         $wnc_x86 = $true
         $wnc_arch = "i686"
     }
-    if ($WoA) {
+    if ($woa) {
         $wnc_woa = $true
         $wnc_arch = "aarch64"
     }
-    if ($Ascii) {
+    if ($ascii) {
         $wnc_wide = $false
     }
-    if ($Nodebug) {
+    if ($nodebug) {
         $wnc_debug = $false
     }
-    if ($Reentrant) {
+    if ($reentrant) {
         $wnc_reentrant = $true
     }
-    if ($Dynamic) {
+    if ($dynamic) {
         $wnc_static = $false
     }
-    if ($LibSeparate) {
+    if ($libSeparate) {
         $wnc_libseparate = $true
     }
 
