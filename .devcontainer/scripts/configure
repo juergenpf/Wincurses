@@ -77,14 +77,14 @@ case "$(uname -s)" in
 	if [ -f ~/Library/Preferences/Parallels/Windows.dat ]; then
 	    PRLPATH=$(mac2unc "$WORKSPACE")
 	    if [ -n "$PRLPATH" ]; then
-        msys_p="${PRLPATH//\\/\/}"
+        	msys_p="${PRLPATH//\\/\/}"
 		T="${WORKSPACE}/.prlpath"
 		echo "# This file is generated. Please don't modify or remove it" > "$T"
 		echo "ORIGINAL_REPO_PATH='$WORKSPACE'" >> "$T"
 		echo "WIN_REPO_PATH='$PRLPATH'" >> "$T"
-        echo "MSYS_REPO_PATH='$msys_p'" >> "$T"
+        	echo "MSYS_REPO_PATH='$msys_p'" >> "$T"
 		prl_profile_helper
-        echo "settings set target.source-map ${WORKSPACE} $msys_p" > "~/Downloads/lldbinit.windows"
+        	echo "settings set target.source-map /workspaces/Wincurses $msys_p" > ~/Downloads/lldbinit.windows
 	    fi
 	fi
         ;;
