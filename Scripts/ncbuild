@@ -134,18 +134,18 @@ get_options() {
     while true
     do
 	    case "$1" in
-	    -a|--ascii)
-		    _opt_widec=0
-		    _cfgopts=$(expr $_cfgopts + 1)
+	-a|--ascii)
+	    _opt_widec=0
+	    _cfgopts=$(expr $_cfgopts + 1)
             _nondefault_opts=$(expr $_nondefault_opts + 1)
-		    shift
-		    ;;
-	    -t|--reentrant)
-		    _opt_reentrant=1
-		    _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-		    shift
-		    ;;
+	    shift
+	    ;;
+        -t|--reentrant)
+	    _opt_reentrant=1
+	    _cfgopts=$(expr $_cfgopts + 1)
+	    _nondefault_opts=$(expr $_nondefault_opts + 1)
+	    shift
+	    ;;
         -i|--interop)
             _opt_interop=1
             _cfgopts=$(expr $_cfgopts + 1)
@@ -169,12 +169,12 @@ get_options() {
             _nondefault_opts=$(expr $_nondefault_opts + 1)
             shift
             ;;
-	    -m|--msvcrt)
-		    _opt_ucrt=0
-		    _cfgopts=$(expr $_cfgopts + 1)
+        -m|--msvcrt)
+	    _opt_ucrt=0
+	    _cfgopts=$(expr $_cfgopts + 1)
             _nondefault_opts=$(expr $_nondefault_opts + 1)
-		    shift
-		    ;;
+	    shift
+	    ;;
         -n|--nodebug)
             _opt_debug=0
             _cfgopts=$(expr $_cfgopts + 1)
@@ -309,7 +309,7 @@ build_prefix() {
     fi
     if opt_woa; then
         arch=aarch64
-        _config_prefix=ucrt64
+        _config_prefix=clang64arm
     elif opt_x86; then
         arch=i686
         _config_prefix=mingw32
@@ -597,8 +597,9 @@ make -j$(nproc) -C "$NCBUILD"
 
 if opt_debug; then
     if maybe_parallels_desktop; then
-        gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
-        _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
+        # gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
+        # _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
+	true
     else
         if in_wsl2; then
             gen_gdbinit > ${NCBUILD}/test/.gdbinit

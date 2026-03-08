@@ -79,6 +79,9 @@ function ConsistencyCheck {
             $wnc_prefix.Value = "mingw32"
         }
     }
+    if ($wnc_woa) {
+       $wnc_prefix.Value = "clang64arm"
+    }
     return $true
 }
 
