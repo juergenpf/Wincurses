@@ -27,7 +27,7 @@ MINGW64_PREFIX=mingw64        # x86_64 gcc msvcrt
 MINGW32_PREFIX=mingw32        # i686 gcc msvcrt
 UCRT64_PREFIX=ucrt64          # x86_64 gcc ucrt
 CLANG64_PREFIX=clang64        # x86_64 clang ucrt
-CLANG64ARM_PREFIX=clang64arm  # aarch64 clang ucrt
+CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
 NATIVE_PREFIX=usr             # Native Linux build
 #
 __is_wsl2=0

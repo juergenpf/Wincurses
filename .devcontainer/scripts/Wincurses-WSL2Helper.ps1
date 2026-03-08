@@ -19,15 +19,22 @@ function Get-WincursesDirectory {
     return $dir
 }
 
-function Get-MinGWGDBPath {
+function Get-MinGWDebugPath {
     [CmdletBinding()]
     param(
         [Switch]$msvcrt,
-        [Switch]$x86
+        [Switch]$x86,
+        [Switch]$woa
     )
     [string]$prefix="ucrt64"
     $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MSYS2 64bit_is1"
     $installDir = (Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue).InstallLocation
+    [string]$debugger="gdb"
+
+    if ($woa -and ($x86 -or $msvcrt)) {
+        Write-Error "-woa Option must not be used together with -x86 or -msvcrt"
+        return $null
+    }
 
     if ([string]::IsNullOrEmpty($installDir)) {
         if (Test-Path "${Env:SystemDrive}\msys64") { 
@@ -41,13 +48,18 @@ function Get-MinGWGDBPath {
             $prefix="mingw32"
         }
     }
+    if ($woa) {
+        $prefix="clangarm64"
+        $debugger="lldb"
+    }
+
     if (-not [string]::IsNullOrEmpty($installDir)) {
-        $gdbPath = Join-Path (Join-Path (Join-Path $installDir $prefix) "bin") "gdb.exe"
-        if (Test-Path $gdbPath -PathType Leaf) {
-            Write-Verbose "Found gdb.exe at $gdbPath"
-            return $gdbPath
+        $dbgPath = Join-Path (Join-Path (Join-Path $installDir $prefix) "bin") "${debugger}.exe"
+        if (Test-Path $dbgPath -PathType Leaf) {
+            Write-Verbose "Found ${debugger}.exe at $dbgPath"
+            return $dbgPath
         } else {
-            Write-Error "gdb.exe not found"
+            Write-Error "${debugger}.exe not found"
         }
     }
     return $null
@@ -80,7 +92,7 @@ function ConsistencyCheck {
         }
     }
     if ($wnc_woa) {
-       $wnc_prefix.Value = "clang64arm"
+       $wnc_prefix.Value = "clangarm64"
     }
     return $true
 }
@@ -251,12 +263,12 @@ function Start-MinGWDebug {
         [Switch]$msvcrt,
         [Switch]$x86
     )
-    $gdbPath = Get-MinGWGDBPath -msvcrt:$msvcrt -x86:$x86
-    if ($gdbPath) {
-        & $gdbPath $Program
+    $dbgPath = Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86
+    if ($dbgPath) {
+        & $dbgPath $Program
     }
     else {
-            Write-Error "gdb.exe not found"
+            Write-Error "Debugger not found"
     }
 }
 
