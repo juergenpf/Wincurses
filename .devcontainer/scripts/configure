@@ -23,9 +23,40 @@ wsl_profile_helper() {
     profile=$(wslpath -u "$profile")
     pdir=$(dirname "$profile")
     [ -n "$pdir" ] || return 1
-    cat "$f" | sed -e "s|@REPOPATH@|$ewp|g" |\
-        sed -e "s|@DISTRO@|$WSL_DISTRO_NAME|g" \
-        > "${pdir}/Wincurses-WSL2Helper.ps1"
+    cat "$f" | sed -e "s|@REPOPATH@|$ewp|g"  > "${pdir}/Wincurses-WSL2Helper.ps1"
+    return 0
+}
+
+mac2unc() {
+    local mac_path="$1"
+
+    mac_path="$(cd "$(dirname "$mac_path")" && pwd)/$(basename "$mac_path")"
+
+    if [[ "$mac_path" == /Users/"$USER"/* ]]; then
+        local remains="${mac_path#/Users/$USER/}"
+        remains="${remains//\//\\}"   # / → \\
+        printf "\\\\\\\\Mac\\\\Home\\\\%s\n" "$remains"
+        return 0
+    fi
+
+    if [[ "$mac_path" == /Volumes/* ]]; then
+        local volume remains
+        volume="$(echo "$mac_path" | cut -d/ -f3)"
+        remains="$(echo "$mac_path" | cut -d/ -f4-)"
+        remains="${remains//\//\\}"
+        printf "\\\\\\\\Mac\\\\%s\\\\%s\n" "$volume" "$remains"
+        return 0
+    fi
+
+    echo "Path cannot be translated" >&2
+    return 1
+}
+
+prl_profile_helper() {
+    local f="${SCRIPT}/Wincurses-WSL2Helper.ps1"
+    local pdir=~/Downloads
+    local safe_p=$(printf '%s' "$PRLPATH" | sed 's/\\/\\\\/g')
+    cat "$f" | sed -e "s|@REPOPATH@|$safe_p|g" > "${pdir}/Wincurses-WSL2Helper.ps1"
     return 0
 }
 
@@ -36,12 +67,23 @@ fi
 
 SSHMOUNT=
 MSYS2PATH=
+PRLPATH=
 DISTRO=
 
 case "$(uname -s)" in
     Darwin*)
         LOCALE="$(defaults read -g AppleLocale).UTF-8"
         TIMEZONE=$(sudo systemsetup -gettimezone | awk '{print $3}')
+	if [ -f ~/Library/Preferences/Parallels/Windows.dat ]; then
+	    PRLPATH=$(mac2unc "$WORKSPACE")
+	    if [ -n "$PRLPATH" ]; then
+		T="${WORKSPACE}/.prlpath"
+		echo "# This file is generated. Please don't modify or remove it" > "$T"
+		echo "ORIGINAL_REPO_PATH='$WORKSPACE'" >> "$T"
+		echo "WIN_REPO_PATH='$PRLPATH'" >> "$T"
+		prl_profile_helper
+	    fi
+	fi
         ;;
     Linux*)
         uname -r | grep -q WSL2
@@ -49,7 +91,7 @@ case "$(uname -s)" in
             DISTRO=$WSL_DISTRO_NAME
             MSYS2PATH="//wsl\$/${WSL_DISTRO_NAME}${WORKSPACE}"
             T="${WORKSPACE}/.wslpath"
-	        echo "# This file is generated. Please don't modify or remove it" > "$T"
+	    echo "# This file is generated. Please don't modify or remove it" > "$T"
             echo "WSL_DISTRO_NAME='$DISTRO'" >> "$T"
             echo "ORIGINAL_REPO_PATH='$WORKSPACE'" >> "$T"
             echo "MSYS2_REPO_PATH='$MSYS2PATH'" >> "$T"

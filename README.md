@@ -297,6 +297,28 @@ which shoud list running all processes whose process name contains ncurses. Note
 ```
 where PID is the concrete PID of your test program.
 
+### MacOS and Parallels Desktop specific aspects
+If you - like me - use MacOS and run a Windows on ARM installation in Parallels Desktop as a VM, you can use a very similar approach to the WSL2 testing described above. The `.devcontainer/scripts/configure` scriot in this case creates the Powershell helper script in the MacOS Downloads directory of your user profile. You can now do this:
+```powershell
+- Open a Powershell Terminal session in your Windows on ARM VM on MacOS
+- Type these commands:
+
+$T=(Split-Path $PROFILE)
+mkdir "$T"
+copy \\Mac\Home\Downloads\Wincurses-WSL2Helper.ps1 "$T"
+```
+You may get a message telling you, that the directory already exists - that's fine, we just want to be sure. With these steps you have copied the generated Powershell helper into the same directory where you powershell profile resides. Now, in the already open Powershell terminal do this:
+```powershell
+notepad $PROFILE
+```
+or use your editor of choice instead of notepad. Inside the profile script, add these lines:
+```powershell
+$wnchelper=(Join-Path (Split-Path $PROFILE) "Wincurses-WSL2Helper.ps1")
+if (Test-Path -Path "$wnchelper" -PathType Leaf) {
+    . "$wnchelper"
+}
+```
+You now essentially have a similar situation like described above for WSL2 and you can follow the steps documented there to navigate now in you Windows on ARM VM to the ncurses test directories and run the tests in the native Windows environment.
+
 ### A pure Linux testing approach
 If you run a native Linux box (Intel based) and still want to have a conveniant test environment not requirung to copy the compiled assets to a separate physical Windows test machine, you of course can use your preferred virtualization tool and run a Windows VM on your Linux box. These tools usually allow to share folders, so it should be possible to setup a procedure that copies the build results to be tested to the Windows machine or even allow the Windows machine to directly access as network drive the build directory and access the results. One very promising tool to try that out is the [Winboat](https://www.winboat.app/) project, which some consider to be `LSW`, the Linux-Subsystem-for-Windows, the equivalent to WSL from the other site. 
-
