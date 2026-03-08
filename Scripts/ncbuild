@@ -23,9 +23,12 @@ NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
 abiversion=6
 #
 # Subdirectory prefixes for MSYS2 builds
-MINGW_PREFIX=mingw64
-UCRT64_PREFIX=ucrt64
-CLANG64_PREFIX=clang64
+MINGW64_PREFIX=mingw64        # x86_64 gcc msvcrt
+MINGW32_PREFIX=mingw32        # i686 gcc msvcrt
+UCRT64_PREFIX=ucrt64          # x86_64 gcc ucrt
+CLANG64_PREFIX=clang64        # x86_64 clang ucrt
+CLANG64ARM_PREFIX=clang64arm  # aarch64 clang ucrt
+NATIVE_PREFIX=usr             # Native Linux build
 #
 __is_wsl2=0
 uname -r | grep -q WSL2
@@ -296,36 +299,45 @@ fi
 _relative_instroot=inst
 _relative_buildroot=build
 
-build_prefix() {
+get_config_prefic() {
     local prefix=
-    local arch=$(uname -m)
-    local _config_prefix=mingw64
-    local base=WindowsCross
-
-    if opt_debug; then
-        prefix=debug
-    else
-        prefix=release
-    fi
     if opt_woa; then
-        arch=aarch64
-        _config_prefix=clang64arm
+        prefix="${CLANG64ARM_PREFIX}"
     elif opt_x86; then
-        arch=i686
-        _config_prefix=mingw32
+        prefix="${MINGW32_PREFIX}"
+    elif opt_native; then
+        prefix=$NATIVE_PREFIX
     else
-        if opt_native ; then
-            arch=$(uname -m)
-            _config_prefix=usr
-            base=linux
+        if opt_ucrt ; then
+            prefix="${UCRT64_PREFIX}"
         else
-            arch=x86_64
-            _config_prefix=mingw64
-            opt_ucrt && _config_prefix=ucrt64
+            prefix="${MINGW64_PREFIX}"
         fi
     fi
-    prefix="${prefix}/${base}/${arch}"
-    echo "$prefix||$_config_prefix"
+    echo "$prefix"
+}
+
+get_target_arch() {
+    local arch=x86_64
+    if opt_woa; then
+        arch=aarch64
+    elif opt_x86; then
+        arch=i686
+    elif opt_native; then
+        arch=$(uname -m)
+    fi
+    echo "$arch"    
+}
+
+build_prefix() {
+    local prefix=debug
+    local arch=$(get_target_arch)
+    local base=WindowsCross
+
+    if ! opt_debug; then
+        prefix=release
+    fi
+    echo "${prefix}/${base}/${arch}"
 }
 
 get_suffix() {
@@ -347,25 +359,23 @@ get_extra_suffix() {
 relative_builddir() {
     local suffix=$(get_suffix)$(get_extra_suffix)
     local pre=$(build_prefix)
-    local config_prefix=${pre##*||}
-    echo "${pre%%||*}/nc${suffix}/${config_prefix}"
+    local config_prefix=$(get_config_prefic)
+    echo "${pre}/nc${suffix}/${config_prefix}"
 }
 
 relative_installbase() {
     local suffix=$(get_suffix)$(get_extra_suffix)
     local pre=$(build_prefix)
-    echo "${pre%%||*}/nc${suffix}"
+    echo "${pre}/nc${suffix}"
 }
 
 relative_installdir() {
-    local pre=$(build_prefix)
-    local config_prefix=${pre##*||}
+    local config_prefix=$(get_config_prefic)
     echo "$(relative_installbase)/${config_prefix}"
 }
 
-pre=$(build_prefix)
-_config_dir=${pre%%||*}
-_config_prefix=${pre##*||} 
+_config_dir=$(build_prefic)
+_config_prefix=$(get_config_prefix) 
 _trace "Build prefix: ${_config_dir}"
 _trace "Configuration prefix: ${_config_prefix}"
 _trace "Library suffix: $(get_suffix)"
@@ -435,14 +445,13 @@ gen_gdbinit_prl() {
     local win_p 
     source "${NC_WORKSPACE}/.prlpath" 
     pushd "$NC_WORKSPACE" >/dev/null
+    win_p="${WIN_REPO_PATH//\\/\/}"
     for p in $(for d in ncurses panel menu form test; do find ncurses/$d -type d ; done | grep -v package)
     do
-        win_p="${p//\//\\}"
-        echo "directory ${WIN_REPO_PATH}\\${win_p}"
+        echo "directory ${win_p}/$p"
     done
     p="build/$(relative_builddir)/include"
-    win_p="${p//\//\\}"
-    echo "directory ${WIN_REPO_PATH}\\${win_p}"
+    echo "directory ${win_p}/$p"
     popd >/dev/null
 }
 
@@ -596,15 +605,13 @@ make -j$(nproc) -C "$NCBUILD"
 [ $? -ne 0 ] && _fail "Build failed"
 
 if opt_debug; then
-    if maybe_parallels_desktop; then
-        # gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
-        # _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
-	true
-    else
-        if in_wsl2; then
+    if opt_woa && maybe_parallels_desktop; then
+        gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
+        _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
+    fi
+    if ! opt_woa && in_wsl2; then
             gen_gdbinit > ${NCBUILD}/test/.gdbinit
             _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
-        fi
     fi
 fi
 
