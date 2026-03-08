@@ -320,7 +320,7 @@ if (Test-Path -Path "$wnchelper" -PathType Leaf) {
 ```
 You now essentially have a similar situation like described above for WSL2 and you can follow the steps documented there to navigate now in you Windows on ARM VM to the ncurses test directories and run the tests in the native Windows environment.
 
-I have no tested gdb debugging under Parallels Windows VM. At the moment, I am not generating a .gdbinit and it might be necessary to install the gdb-multiarch package, because the MSYS2/MinGW tools are native x86_64 even on Windows on ARM. They only provide the toolchains there to compile for the ARM target.
+I have not tested gdb debugging under Parallels Windows VM. At the moment, I am not generating a .gdbinit and it might be necessary to install the gdb-multiarch package, because the MSYS2/MinGW tools are native x86_64 even on Windows on ARM. They only provide the toolchains there to compile for the ARM target.
 
 ### A pure Linux testing approach
 If you run a native Linux box (Intel based) and still want to have a conveniant test environment not requirung to copy the compiled assets to a separate physical Windows test machine, you of course can use your preferred virtualization tool and run a Windows VM on your Linux box. These tools usually allow to share folders, so it should be possible to setup a procedure that copies the build results to be tested to the Windows machine or even allow the Windows machine to directly access as network drive the build directory and access the results. One very promising tool to try that out is the [Winboat](https://www.winboat.app/) project, which some consider to be `LSW`, the Linux-Subsystem-for-Windows, the equivalent to WSL from the other site. 

@@ -44,6 +44,12 @@ in_wsl2() {
     return 1
 }
 
+maybe_parallels_desktop() 
+{
+    [ -f "${NC_WORKSPACE}/.prlpath" ] && return 0
+    return 1
+}
+
 err=
 _cfgopts=0 # Count the number of options that affect the configuration
 _nondefault_opts=0 # Count the number of options that differ from the default configuration
@@ -421,6 +427,26 @@ gen_gdbinit() {
     popd >/dev/null
 }
 
+# When we are running in Parallels Desktop, we need to generate a .gdbinit file that 
+# contains the correct paths to the repository in the MacOS filesystem.  
+gen_gdbinit_prl() {
+    local d
+    local p
+    local win_p 
+    source "${NC_WORKSPACE}/.prlpath" 
+    pushd "$NC_WORKSPACE" >/dev/null
+    for p in $(for d in ncurses panel menu form test; do find ncurses/$d -type d ; done | grep -v package)
+    do
+        win_p="${p//\//\\}"
+        echo "directory ${WIN_REPO_PATH}\\${win_p}"
+    done
+    p="build/$(relative_builddir)/include"
+    win_p="${p//\//\\}"
+    echo "directory ${WIN_REPO_PATH}\\${win_p}"
+    popd >/dev/null
+}
+
+
 do_config() {
     local srcdir=$NC_WORKSPACE/ncurses
     local cfg=$srcdir/configure
@@ -569,9 +595,16 @@ fi
 make -j$(nproc) -C "$NCBUILD"
 [ $? -ne 0 ] && _fail "Build failed"
 
-if in_wsl2 && opt_debug ; then
-    gen_gdbinit > ${NCBUILD}/test/.gdbinit
-    _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
+if opt_debug; then
+    if maybe_parallels_desktop; then
+        gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
+        _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
+    else
+        if in_wsl2; then
+            gen_gdbinit > ${NCBUILD}/test/.gdbinit
+            _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
+        fi
+    fi
 fi
 
 _trace "Installing to: ${NCINST}"
