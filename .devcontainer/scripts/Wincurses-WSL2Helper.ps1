@@ -261,9 +261,10 @@ function Start-MinGWDebug {
     param(
         [string]$Program,
         [Switch]$msvcrt,
-        [Switch]$x86
+        [Switch]$x86,
+	[Switch]$woa
     )
-    $dbgPath = Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86
+    $dbgPath = Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86 -woa:$woa
     if ($dbgPath) {
         & $dbgPath $Program
     }
