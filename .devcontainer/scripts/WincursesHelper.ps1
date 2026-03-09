@@ -26,7 +26,7 @@ function GetConfigPrefix {
         [Switch]$x86,
         [Switch]$woa
     )
-    $prefix="ucrt64"
+    [string]$prefix="ucrt64"
     if ($msvcrt) {
         $prefix="mingw64"
         if ($x86) {
@@ -39,6 +39,20 @@ function GetConfigPrefix {
     return $prefix
 }
 
+function GetTargetArch {
+    patam(
+        [Switch]$x86,
+        [Switch]$woa
+    )
+    if ($woa) {
+        return "aarch64"
+    }
+    if ($x86) {
+        return "i686"
+    }
+    return "x86_64"
+}
+
 function Get-MinGWDebugPath {
     [CmdletBinding()]
     param(
@@ -49,28 +63,21 @@ function Get-MinGWDebugPath {
     [string]$prefix="ucrt64"
     $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MSYS2 64bit_is1"
     $installDir = (Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue).InstallLocation
+    [string]$prefix = GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa
     [string]$debugger="gdb"
 
     if ($woa -and ($x86 -or $msvcrt)) {
         Write-Error "-woa Option must not be used together with -x86 or -msvcrt"
         return $null
     }
+    if ($woa) {
+        $debugger="lldb"
+    }
 
     if ([string]::IsNullOrEmpty($installDir)) {
         if (Test-Path "${Env:SystemDrive}\msys64") { 
             $installDir = "${Env:SystemDrive}\msys64" 
         }
-    }
-
-    if ($msvcrt) {
-        $prefix="mingw64"
-        if ($x86) {
-            $prefix="mingw32"
-        }
-    }
-    if ($woa) {
-        $prefix="clangarm64"
-        $debugger="lldb"
     }
 
     if (-not [string]::IsNullOrEmpty($installDir)) {
@@ -85,60 +92,50 @@ function Get-MinGWDebugPath {
     return $null
 }
 
-
 function ConsistencyCheck {
     param(
-        [bool]$wnc_x86,
-        [bool]$wnc_woa,
-        [bool]$wnc_ucrt,
-        [ref]$wnc_prefix
+        [Switch]$x86,
+        [Switch]$woa,
+        [Switch]$msvcrt
     )
-    if ($wnc_x86 -and $wnc_woa) {
+    if ($x86 -and $woa) {
         Write-Error "-x86 and -WoA are mutually exclusive"
         return $false
     }
-    if ($wnc_x86 -and $wnc_ucrt) {
+    if ($x86 -and (-not $msvcrt)) {
         Write-Error "-x86 requires -msvcrt"
         return $false
     }
-    if ($wnc_woa -and (-not $wnc_ucrt)) {
+    if ($woa -and $msvcrt) {
         Write-Error "-WoA and --msvcrt are mutually exclusive"
         return $false
-    }
-    if (-not $wnc_ucrt) {
-        $wnc_prefix.Value = "mingw64"
-        if ($wnc_x86) {
-            $wnc_prefix.Value = "mingw32"
-        }
-    }
-    if ($wnc_woa) {
-       $wnc_prefix.Value = "clangarm64"
     }
     return $true
 }
 
 function BuildPrefix {
     param(
-        [bool]$wnc_debug,
-        [string]$wnc_arch
+        [Switch]$nodebug,
+        [Switch]$x86,
+        [Switch]$woa
     )
     [string]$prefix = "debug"
-    if (-not $wnc_debug) {
+    if ($nodebug) {
         $prefix = "release"
     }
-    return (Join-Path (Join-Path $prefix "WindowsCross") $wnc_arch)
+    return (Join-Path (Join-Path $prefix "WindowsCross") (GetTargetArch -x86:$x86 -woa:$woa))
 }
 
 function GetSuffix {
     param(
-        [bool]$wnc_reentrant,
-        [bool]$wnc_wide
+        [Switch]$reentrant,
+        [Switch]$ascii
     )
     $suffix = ""
-    if ($wnc_reentrant) {
+    if ($reentrant) {
         $suffix = "t${suffix}"
     }
-    if ($wnc_wide) {
+    if (-not $ascii) {
         $suffix = "w${suffix}"
     }
     return $suffix
@@ -146,38 +143,43 @@ function GetSuffix {
 
 function RelativeBuildDir {
     param(
-        [bool]$wnc_debug,
-        [string]$wnc_arch,
-        [bool]$wnc_reentrant,
-        [bool]$wnc_wide,
-        [string]$wnc_prefix
+        [Switch]$nodebug,
+        [Switch]$reentrant,
+        [Switch]$ascii,
+        [Switch]$x86,
+        [Switch]$woa,
+        [Switch]$msvcrt
     )
-    $suffix = GetSuffix -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide
-    $pre = BuildPrefix -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch
-    return (Join-Path (Join-Path $pre "nc${suffix}") $wnc_prefix)
+    $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
+    $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
+    return (Join-Path (Join-Path $pre "nc${suffix}") (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
 }
+
 
 function RelativeInstallBase {
     param(
-        [bool]$wnc_debug,
-        [string]$wnc_arch,
-        [bool]$wnc_reentrant,
-        [bool]$wnc_wide
+        [Switch]$nodebug,
+        [Switch]$reentrant,
+        [Switch]$ascii,
+        [Switch]$x86,
+        [Switch]$woa,
+        [Switch]$msvcrt
     )
-    $suffix = GetSuffix -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide
-    $pre = BuildPrefix -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch
+    $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
+    $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
     return (Join-Path $pre "nc${suffix}")
 }
 
 function RelativeInstallDir {
     param(
-        [bool]$wnc_debug,
-        [string]$wnc_arch,
-        [bool]$wnc_reentrant,
-        [bool]$wnc_wide,
-        [string]$wnc_prefix
+        [Switch]$nodebug,
+        [Switch]$reentrant,
+        [Switch]$ascii,
+        [Switch]$x86,
+        [Switch]$woa,
+        [Switch]$msvcrt
     )
-    return (Join-Path (RelativeInstallBase -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide) $wnc_prefix)
+    return (Join-Path (RelativeInstallBase -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
 }   
 
 function Push-WincursesTestLocation {
@@ -193,57 +195,19 @@ function Push-WincursesTestLocation {
         [Switch]$msvcrt
     )
 
-    [string]$wnc_arch = "x86_64"
-    [string]$wnc_prefix = "ucrt64"
-    [Bool]$wnc_debug = $true
-    [Bool]$wnc_wide = $true
-    [Bool]$wnc_reentrant = $false
-    [Bool]$wnc_ucrt = $true
-    [Bool]$wnc_static = $true
-    [Bool]$wnc_libseparate = $false
-    [Bool]$wnc_x86 = $false
-    [Bool]$wnc_woa = $false
-
-    if ($msvcrt) {
-        $wnc_ucrt = $false
-    }
-    if ($x86) {
-        $wnc_x86 = $true
-        $wnc_arch = "i686"
-    }
-    if ($woa) {
-        $wnc_woa = $true
-        $wnc_arch = "aarch64"
-    }
-    if ($ascii) {
-        $wnc_wide = $false
-    }
-    if ($nodebug) {
-        $wnc_debug = $false
-    }
-    if ($reentrant) {
-        $wnc_reentrant = $true
-    }
-    if ($dynamic) {
-        $wnc_static = $false
-    }
-    if ($libSeparate) {
-        $wnc_libseparate = $true
-    }
-
-    $prefixRef = [ref]$wnc_prefix
-    if (-not (ConsistencyCheck -wnc_x86:$wnc_x86 -wnc_woa:$wnc_woa -wnc_ucrt:$wnc_ucrt -wnc_prefix:$prefixRef)) {
+    if (-not (ConsistencyCheck -x86:$x86 -woa:$woa -msvcrt:$msvcrt)) {
         Write-Error "Inconsistent configuration"
         return
     }
-    $wnc_prefix = $prefixRef.Value
 
-    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide -wnc_prefix:$wnc_prefix))
+    $Env:WNCDEBUG=""
+    
+    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt))
     if (Test-Path -path $loc  -PathType Container) {
-        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -wnc_debug:$wnc_debug -wnc_arch:$wnc_arch -wnc_reentrant:$wnc_reentrant -wnc_wide:$wnc_wide -wnc_prefix:$wnc_prefix))
+        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt))
         [string]$lib = (Join-Path $loc "lib")
-        [string]$bin=(Join-Path $inst "bin")
-        if (-not $wnc_static) {
+        [string]$bin = (Join-Path $inst "bin")
+        if ($dynamic) {
             if (Test-Path -Path $bin -PathType Container) {
                 Write-Verbose "Adding $bin to PATH"
                 $Env:PATH = "$bin;$Env:PATH"
@@ -271,6 +235,8 @@ function Push-WincursesTestLocation {
             write-verbose "Entering directory test"
             set-location "test"
         }
+        $Env:WNCDEBUG=(Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86 -woa:$woa)
+
     } else {
         Write-Error "Build directory not found: $loc"
     }
@@ -279,12 +245,9 @@ function Push-WincursesTestLocation {
 function Start-MinGWDebug {
     [CmdletBinding()]
     param(
-        [string]$Program,
-        [Switch]$msvcrt,
-        [Switch]$x86,
-	[Switch]$woa
+        [string]$Program
     )
-    $dbgPath = Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86 -woa:$woa
+    $dbgPath = $Env:WNCDEBUG
     if ($dbgPath) {
         & $dbgPath $Program
     }
