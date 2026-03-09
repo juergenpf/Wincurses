@@ -40,7 +40,7 @@ function GetConfigPrefix {
 }
 
 function GetTargetArch {
-    patam(
+    param(
         [Switch]$x86,
         [Switch]$woa
     )

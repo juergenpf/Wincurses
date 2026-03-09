@@ -232,7 +232,7 @@ notepad $PROFILE
 ```
 or use your editor of choice instead of notepad. Inside the profile script, add these lines:
 ```powershell
-$wnchelper=(Join-Path (Split-Path $PROFILE) "Wincurses-WSL2Helper.ps1")
+$wnchelper=(Join-Path (Split-Path $PROFILE) "WincursesHelper.ps1")
 if (Test-Path -Path "$wnchelper" -PathType Leaf) {
     . "$wnchelper"
 }
@@ -261,26 +261,23 @@ without any options, you will be pushed into the test directory of the build for
 pwct -x86 -msvcrt -Ascii
 ```
 will push you into the test directory of a 32-Bit build without wide-character support for the old MSVCRT C-Runtime. You may leave this location with a simple `Pop-Location` (alias: popd).
-Please note that these directories are all UNC directories pointing to locations in the dummy host `\\wsl.localhost` that Microsoft has implemented to allow Windows to navigate seamlessly into directories that are located in Linux Distributions running under WSL2.
+Please note that these directories are all UNC directories pointing to locations in the dummy host `\\wsl.localhost` that Microsoft has implemented to allow Windows to navigate seamlessly into directories that are located in Linux Distributions running under WSL2. The pwct alias tries to detect the MSYS2 debugger suitable for that build target and sets an environment variable WNCDEBUG to point to that debugger.
 
 The next actions will only be possible, if at least you have installed a minimal `MSYS2` environment and have installed the required gdb packages 
 - mingw-w64-ucrt-x86_64-gdb
 - mingw-w64-x86_64-gdb
 - mingw-w64-i686-gdb
 
-The `Start-MinGWDebug` cmdlet accepts two switches:
-- -msvcrt
-- -x86
+The `Start-MinGWDebug` cmdlet looks for the WNCDEBUG environment variable and loads that debugger. This will usually be gdb, except for the Windows on ARM target. There we use lldb as the source has been compiled with clang.
 
-By default, we assume x86_64 and the UCRT.
-
-Assuming you are in this directory, you can use `Start-MinGWDebug` to launch the MinGW gdb debugger to debug a Windows executable.
+Assuming you are in the default build  directory, you can use `Start-MinGWDebug` to launch the MinGW gdb debugger to debug a Windows executable.
 ```powershell
 ncdbg ncurses.exe
 ```
 for example would debug the ncurses.exe test program compiled for the UCRT and x86_64 architecture. If you would like to debug the 32-Bit MSVCRT version, you would need to type
 ```powershell
-ncdbg -x86 -msvcrt ncurses.exe
+pwct -x86 -msvcrt
+ncdbg ncurses.exe
 ```
 Please note, that this only works, becaus the ncbuild script, in case it detects a WSL2 environment, generates a specially crafted `.gdbinit` file in the test directory that helps gdb to find the sources. Otherweise gdb would be lost with only the source information derived from the locations in the container where the build was done. The first time you launch gdb this way, you'll see a security warning that gdb refuses this `.gdbinit` without your permission. Follow the instructions this warning gives you to allow these kind of `.gdbinit` in your environment.
 
@@ -298,14 +295,15 @@ which shoud list running all processes whose process name contains ncurses. Note
 where PID is the concrete PID of your test program.
 
 ### MacOS and Parallels Desktop specific aspects
-If you - like me - use MacOS and run a Windows on ARM installation in Parallels Desktop as a VM, you can use a very similar approach to the WSL2 testing described above. The `.devcontainer/scripts/configure` scriot in this case creates the Powershell helper script in the MacOS Downloads directory of your user profile. You can now do this:
+If you - like me - use MacOS and run a Windows on ARM installation in Parallels Desktop as a VM, you can use a very similar approach to the WSL2 testing described above. The `.devcontainer/scripts/configure` scriot in this case creates the Powershell helper script in the MacOS Downloads directory of your user profile. It also creates an init file for the lldb debugger that helps the debugger to find the sources, because the compile was done in the devcontainer with a different directory structure. You can now do this:
 ```powershell
 - Open a Powershell Terminal session in your Windows on ARM VM on MacOS
 - Type these commands:
 
 $T=(Split-Path $PROFILE)
 mkdir "$T"
-copy \\Mac\Home\Downloads\Wincurses-WSL2Helper.ps1 "$T"
+copy \\Mac\Home\Downloads\WincursesHelper.ps1 "$T"
+copy \\Mac\Home\Downloads\lldbinit.windows $Env:USERPROFILE\.lldbinit
 ```
 You may get a message telling you, that the directory already exists - that's fine, we just want to be sure. With these steps you have copied the generated Powershell helper into the same directory where you powershell profile resides. Now, in the already open Powershell terminal do this:
 ```powershell
@@ -313,14 +311,28 @@ notepad $PROFILE
 ```
 or use your editor of choice instead of notepad. Inside the profile script, add these lines:
 ```powershell
-$wnchelper=(Join-Path (Split-Path $PROFILE) "Wincurses-WSL2Helper.ps1")
+$wnchelper=(Join-Path (Split-Path $PROFILE) "WincursesHelper.ps1")
 if (Test-Path -Path "$wnchelper" -PathType Leaf) {
     . "$wnchelper"
 }
 ```
 You now essentially have a similar situation like described above for WSL2 and you can follow the steps documented there to navigate now in you Windows on ARM VM to the ncurses test directories and run the tests in the native Windows environment.
 
-I have not tested gdb debugging under Parallels Windows VM. At the moment, I am not generating a .gdbinit and it might be necessary to install the gdb-multiarch package, because the MSYS2/MinGW tools are native x86_64 even on Windows on ARM. They only provide the toolchains there to compile for the ARM target.
+Please note, that under MacOS in the devcontainer you also generate the Intel based libraries and test programs, and because Windows on ARM offers emulation of Windows code, you can run and debug the Intel program also on your Windows on ARM System. So if you do
+```
+pwct
+ncdbg ncurses.exe
+```
+on an Windows on ARM system, you actually debug (with gdb) the x86_64 version of the program. If you want to debug real ARM code, you must do this:
+```
+pwct -woa
+ncdbg ncurses.exe
+```
+In the MSYS2 environment on Windows on ARM, in addition to the packages mentioned above in the WLS2 sdection, you need to install this package:
+```bash
+mingw-w64-clang-aarch64-lldb
+```
+in order to be able to debug clang compiled ARM code.
 
 ### A pure Linux testing approach
 If you run a native Linux box (Intel based) and still want to have a conveniant test environment not requirung to copy the compiled assets to a separate physical Windows test machine, you of course can use your preferred virtualization tool and run a Windows VM on your Linux box. These tools usually allow to share folders, so it should be possible to setup a procedure that copies the build results to be tested to the Windows machine or even allow the Windows machine to directly access as network drive the build directory and access the results. One very promising tool to try that out is the [Winboat](https://www.winboat.app/) project, which some consider to be `LSW`, the Linux-Subsystem-for-Windows, the equivalent to WSL from the other site. 
