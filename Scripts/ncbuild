@@ -2,6 +2,7 @@
 # See License.md in the project root for license information.
 #
 SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
+NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
 
 _log() {
     echo "$@" >&2
@@ -18,7 +19,6 @@ not_implemented() {
 }
 
 
-NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
 
 abiversion=6
 #
@@ -604,12 +604,12 @@ fi
 make -j$(nproc) -C "$NCBUILD"
 [ $? -ne 0 ] && _fail "Build failed"
 
-if opt_debug; then
-    if opt_woa && maybe_parallels_desktop; then
+if opt_debug && ! opt_woa ; then
+    if maybe_parallels_desktop; then
         gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
         _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
     fi
-    if ! opt_woa && in_wsl2; then
+    if in_wsl2; then
             gen_gdbinit > ${NCBUILD}/test/.gdbinit
             _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
     fi

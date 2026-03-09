@@ -3,13 +3,14 @@
 #
 SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
 WORKSPACE=$(dirname $(dirname "$SCRIPT"))
+HELPER=WincursesHelper.ps1
 
 wsl_profile_helper() {
     local w=$(type -p where.exe)
     local p=
     local profile=
     local pdir=
-    local f="${SCRIPT}/Wincurses-WSL2Helper.ps1"
+    local f="${SCRIPT}/${HELPER}"
     local wp=$(wslpath -w "$WORKSPACE")
     local ewp=$(printf '%s' "$wp" | sed 's/\\/\\\\/g')
     [ -f "$f" ] || return 1
@@ -23,7 +24,7 @@ wsl_profile_helper() {
     profile=$(wslpath -u "$profile")
     pdir=$(dirname "$profile")
     [ -n "$pdir" ] || return 1
-    cat "$f" | sed -e "s|@REPOPATH@|$ewp|g"  > "${pdir}/Wincurses-WSL2Helper.ps1"
+    cat "$f" | sed -e "s|@REPOPATH@|$ewp|g"  > "${pdir}/${HELPER}"
     return 0
 }
 
@@ -53,10 +54,10 @@ mac2unc() {
 }
 
 prl_profile_helper() {
-    local f="${SCRIPT}/Wincurses-WSL2Helper.ps1"
+    local f="${SCRIPT}/${HELPER}"
     local pdir=~/Downloads
     local safe_p=$(printf '%s' "$PRLPATH" | sed 's/\\/\\\\/g')
-    cat "$f" | sed -e "s|@REPOPATH@|$safe_p|g" > "${pdir}/Wincurses-WSL2Helper.ps1"
+    cat "$f" | sed -e "s|@REPOPATH@|$safe_p|g" > "${pdir}/${HELPER}"
     return 0
 }
 

@@ -19,6 +19,26 @@ function Get-WincursesDirectory {
     return $dir
 }
 
+function GetConfigPrefix {
+    [CmdletBinding()]
+    param(
+        [Switch]$msvcrt,
+        [Switch]$x86,
+        [Switch]$woa
+    )
+    $prefix="ucrt64"
+    if ($msvcrt) {
+        $prefix="mingw64"
+        if ($x86) {
+            $prefix="mingw32"
+        }
+    }
+    if ($woa) {
+        $prefix="clangarm64"
+    }
+    return $prefix
+}
+
 function Get-MinGWDebugPath {
     [CmdletBinding()]
     param(
