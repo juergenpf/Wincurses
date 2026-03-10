@@ -1,0 +1,47 @@
+# See License.md in the project root for license information.
+NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
+
+_opt_verbose=0
+
+__is_wsl2=0
+uname -r | grep -q WSL2
+[ $? -eq 0 ] && __is_wsl2=1
+
+_log() {
+    echo "$@" >&2
+}
+
+_trace() {
+    if [ $_opt_verbose -ne 0 ]; then
+        _log "TRACE: $@"
+    fi
+}
+
+_fail() {
+    _log "ERROR: $@"
+    exit 1
+}
+
+not_implemented() {
+    _log "Not implemented: $@"
+    exit 1 
+}
+
+# Test if we are running in a container (Docker, Podman, etc.) by checking 
+# for the presence of the /.dockerenv file.
+in_container() {
+    [ -f /.dockerenv ] && return 0
+    return 1
+}
+
+# Test if we are running in WSL2 by checking the kernel version for the presence of "WSL2".
+in_wsl2() {
+    [ $__is_wsl2 -ne 0 ] && return 0
+    return 1
+}
+
+maybe_parallels_desktop() 
+{
+    [ -f "${NC_WORKSPACE}/.prlpath" ] && return 0
+    return 1
+}

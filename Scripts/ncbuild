@@ -2,23 +2,7 @@
 # See License.md in the project root for license information.
 #
 SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
-NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
-
-_log() {
-    echo "$@" >&2
-}
-
-_fail() {
-    _log "ERROR: $@"
-    exit 1
-}
-
-not_implemented() {
-    _log "Not implemented: $@"
-    exit 1 
-}
-
-
+. $SCRIPT/_inc
 
 abiversion=6
 #
@@ -30,30 +14,9 @@ CLANG64_PREFIX=clang64        # x86_64 clang ucrt
 CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
 NATIVE_PREFIX=usr             # Native Linux build
 #
-__is_wsl2=0
-uname -r | grep -q WSL2
-[ $? -eq 0 ] && __is_wsl2=1
-
-# Test if we are running in a container (Docker, Podman, etc.) by checking 
-# for the presence of the /.dockerenv file.
-in_container() {
-    [ -f /.dockerenv ] && return 0
-    return 1
-}
-
-# Test if we are running in WSL2 by checking the kernel version for the presence of "WSL2".
-in_wsl2() {
-    [ $__is_wsl2 -ne 0 ] && return 0
-    return 1
-}
-
-maybe_parallels_desktop() 
-{
-    [ -f "${NC_WORKSPACE}/.prlpath" ] && return 0
-    return 1
-}
 
 err=
+
 _cfgopts=0 # Count the number of options that affect the configuration
 _nondefault_opts=0 # Count the number of options that differ from the default configuration
 
@@ -64,7 +27,6 @@ _opt_debug=1
 _opt_clean=0
 _opt_woa=0
 _opt_x86=0
-_opt_verbose=0
 _opt_dynamic=0
 _opt_libseparate=0
 _opt_native=0
@@ -242,12 +204,6 @@ get_options() {
     done
 }
 
-_trace() {
-    if [ $_opt_verbose -ne 0 ]; then
-        _log "TRACE: $@"
-    fi
-}
-
 consistency_checks() {
     if opt_spfuncs && ! opt_native; then
         _fail "sp-funcs support is only available for native builds."
@@ -299,7 +255,7 @@ fi
 _relative_instroot=inst
 _relative_buildroot=build
 
-get_config_prefic() {
+get_config_prefix() {
     local prefix=
     if opt_woa; then
         prefix="${CLANG64ARM_PREFIX}"
@@ -359,7 +315,7 @@ get_extra_suffix() {
 relative_builddir() {
     local suffix=$(get_suffix)$(get_extra_suffix)
     local pre=$(build_prefix)
-    local config_prefix=$(get_config_prefic)
+    local config_prefix=$(get_config_prefix)
     echo "${pre}/nc${suffix}/${config_prefix}"
 }
 
@@ -370,20 +326,18 @@ relative_installbase() {
 }
 
 relative_installdir() {
-    local config_prefix=$(get_config_prefic)
+    local config_prefix=$(get_config_prefix)
     echo "$(relative_installbase)/${config_prefix}"
 }
 
-_config_dir=$(build_prefic)
-_config_prefix=$(get_config_prefix) 
-_trace "Build prefix: ${_config_dir}"
-_trace "Configuration prefix: ${_config_prefix}"
+_trace "Build prefix: $(build_prefix)"
+_trace "Configuration prefix: $(get_config_prefix)"
 _trace "Library suffix: $(get_suffix)"
 _trace "Relative build directory: $(relative_builddir)"
 _trace "Relative install base: $(relative_installbase)"
 _trace "Relative install directory: $(relative_installdir)"
 
-NCBUILD=${NC_WORKSPACE}/$_relative_buildroot/$(relative_builddir)
+NCBUILD=${NC_WORKSPACE}/${_relative_buildroot}/$(relative_builddir)
 if opt_clean; then
     _trace "Cleaning build directory: ${NCBUILD}"
     rm -rf "${NCBUILD}"
@@ -391,7 +345,7 @@ fi
 _trace "NCBUILD: ${NCBUILD}, creating..."
 mkdir -p "${NCBUILD}"
 
-NCINST=${NC_WORKSPACE}/$_relative_instroot/$(relative_installbase)
+NCINST=${NC_WORKSPACE}/${_relative_instroot}/$(relative_installbase)
 if opt_clean; then
     _trace "Cleaning install directory: ${NCINST}"
     rm -rf "${NCINST}"
@@ -463,6 +417,7 @@ do_config() {
     local opts=
     local cflags= 
     local ldflags=
+    local prefix=$(get_config_prefix)
 
     [ -x "$cfg" ] || _fail "Configure script not found or not executable: $cfg"
 
@@ -574,8 +529,8 @@ do_config() {
 
     pushd "$NCBUILD" >/dev/null
     CFLAGS="${cflags}" LDFLAGS="${ldflags}" \
-    ${cfg} ${opts} --prefix="/${_config_prefix}" \
-        --datadir="/${_config_prefix}/share" \
+    ${cfg} ${opts} --prefix="/${prefix}" \
+        --datadir="/${prefix}/share" \
         --srcdir="${srcdir}"
     popd >/dev/null
     if ! opt_dynamic; then

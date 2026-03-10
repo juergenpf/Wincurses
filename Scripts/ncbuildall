@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# See License.md in the project root for license information.
+#
+SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
+. $SCRIPT/_inc
+
+err=
+
+_opt_debug=1
+_opt_dynamic=0
+_opt_native=0
+
+opt_debug() {
+    [ $_opt_debug -ne 0 ] && return 0
+    return 1
+}
+
+opt_dynamic() {
+    [ $_opt_dynamic -ne 0 ] && return 0
+    return 1
+}
+
+opt_native() {
+    [ $_opt_native -ne 0 ] && return 0
+    return 1
+}
+
+get_options() {
+    eval set -- "$(getopt -o Ndnvh -l native,dynamic,nodebug,verbose,help -- "$@")"
+
+    while true
+    do
+	    case "$1" in
+            -N|--native)
+                _opt_native=1
+                shift
+                ;;
+            -n|--nodebug)
+                _opt_debug=0
+                shift
+                ;;
+            -v|--verbose)
+                _opt_verbose=1
+                shift
+                ;;
+            -d|--dynamic)
+                _opt_dynamic=1
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [options]"
+                echo "Options:"
+                echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
+                echo "  -d, --dynamic         Build with shared libraries (default is static)"
+                echo "  -n, --nodebug         Build without debug symbols and features"
+                echo "  -v, --verbose         Enable verbose output"
+                echo "  -h, --help            Show this help message and exit"
+                shift
+                exit 0
+                ;;
+	    --)
+		    shift
+		    break
+		    ;;
+	    *)
+		    err="$err $1"
+		    shift
+		    break
+		    ;;
+	    esac
+    done
+}
+
+
+in_container || _fail "Not running in devcontainer." 
+
+get_options $@
+[ -n "$err" ] && _fail "Invalid options: $err"
+
+addopts=
+! opt_debug && addopts="$addopts --nodebug"
+opt_dynamic && addopts="$addopts --dynamic" 
+
+if opt_native; then
+    _trace "Building for native execution in Linux (no cross-compilation)"
+    ncbuild --clean $addopts
+    ncbuild --clean $addopts --asci
+    ncbuild --clean $addopts --reentrant
+    ncbuild --clean $addopts --interop
+    ncbuild --clean $addopts --spfuncs
+    ncbuild --clean $addopts --asci --reentrant
+    ncbuild --clean $addopts --asci --interop
+    ncbuild --clean $addopts --asci --spfuncs
+    ncbuild --clean $addopts --reentrant --interop
+    ncbuild --clean $addopts --reentrant --spfuncs
+    ncbuild --clean $addopts --interop --spfuncs
+    ncbuild --clean $addopts --asci --reentrant --interop
+    ncbuild --clean $addopts --asci --reentrant --spfuncs
+    ncbuild --clean $addopts --asci --interop --spfuncs
+    ncbuild --clean $addopts --reentrant --interop --spfuncs
+    ncbuild --clean $addopts --asci --reentrant --interop --spfuncs
+else
+    _trace "Building for Windows using cross-compilation"
+    for p in "" "--x86" "--woa"
+    do
+        ncbuild --clean $addopts $p
+        ncbuild --clean $addopts $p --asci
+        ncbuild --clean $addopts $p --reentrant
+        ncbuild --clean $addopts $p --asci --reentrant
+    done
+fi
+exit 0
