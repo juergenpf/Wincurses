@@ -378,6 +378,24 @@ if ! opt_native; then
         _fail "Cross build environment file not found: ${env_file}"
     fi  
     _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
+else
+    if [ "$(uname -s)" = "Darwin" ]; then
+	if [ "$(uname -m)" = "arm64" ]; then
+	    _trace "On Darwin we use the system compiler toolchain for native builds"
+	    export CC=cc
+	    export CXX=c++
+	    export CPP=cpp
+	    export LD=ld
+	    export NM=nm
+	    export AR=ar
+	    export RANLIB=ranlib
+	    export AS=as
+	    export OBJDUMP=objdump
+	    export STRIP=strip
+	else
+	    _fail "We support native Darwin builds only on Apple silicon."
+	fi
+    fi
 fi
 
 # When we are running in WSL2, we need to generate a .gdbinit file that contains 
