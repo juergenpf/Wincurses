@@ -32,7 +32,8 @@ opt_clean() {
 }
 
 get_options() {
-    eval set -- "$(getopt -o cNdnvh -l clean,native,dynamic,nodebug,verbose,help -- "$@")"
+    local G=$(get_getopt)
+    eval set -- "$($G -o cNdnvh -l clean,native,dynamic,nodebug,verbose,help -- "$@")"
 
     while true
     do
@@ -97,30 +98,30 @@ opt_clean   && addopts="$addopts --clean"
 if opt_native; then
     _trace "Building for native execution in Linux (no cross-compilation)"
     addopts="$addopts --native"
-    ncbuild $addopts
-    ncbuild $addopts --ascii
-    ncbuild $addopts --reentrant
-    ncbuild $addopts --interop
-    ncbuild $addopts --spfuncs
-    ncbuild $addopts --ascii --reentrant
-    ncbuild $addopts --ascii --interop
-    ncbuild $addopts --ascii --spfuncs
-    ncbuild $addopts --reentrant --interop
-    ncbuild $addopts --reentrant --spfuncs
-    ncbuild $addopts --interop --spfuncs
-    ncbuild $addopts --ascii --reentrant --interop
-    ncbuild $addopts --ascii --reentrant --spfuncs
-    ncbuild $addopts --ascii --interop --spfuncs
-    ncbuild $addopts --reentrant --interop --spfuncs
-    ncbuild $addopts --ascii --reentrant --interop --spfuncs
+    ${SCRIPT}/ncbuild $addopts
+    ${SCRIPT}/ncbuild $addopts --ascii
+    ${SCRIPT}/ncbuild $addopts --reentrant
+    ${SCRIPT}/ncbuild $addopts --interop
+    ${SCRIPT}/ncbuild $addopts --spfuncs
+    ${SCRIPT}/ncbuild $addopts --ascii --reentrant
+    ${SCRIPT}/ncbuild $addopts --ascii --interop
+    ${SCRIPT}/ncbuild $addopts --ascii --spfuncs
+    ${SCRIPT}/ncbuild $addopts --reentrant --interop
+    ${SCRIPT}/ncbuild $addopts --reentrant --spfuncs
+    ${SCRIPT}/ncbuild $addopts --interop --spfuncs
+    ${SCRIPT}/ncbuild $addopts --ascii --reentrant --interop
+    ${SCRIPT}/ncbuild $addopts --ascii --reentrant --spfuncs
+    ${SCRIPT}/ncbuild $addopts --ascii --interop --spfuncs
+    ${SCRIPT}/ncbuild $addopts --reentrant --interop --spfuncs
+    ${SCRIPT}/ncbuild $addopts --ascii --reentrant --interop --spfuncs
 else
     _trace "Building for Windows using cross-compilation"
     for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
     do
-        ncbuild $addopts $p
-        ncbuild $addopts $p --ascii
-        ncbuild $addopts $p --reentrant
-        ncbuild $addopts $p --ascii --reentrant
+        ${SCRIPT}/ncbuild $addopts $p
+        ${SCRIPT}/ncbuild $addopts $p --ascii
+        ${SCRIPT}/ncbuild $addopts $p --reentrant
+        ${SCRIPT}/ncbuild $addopts $p --ascii --reentrant
     done
 fi
 exit 0

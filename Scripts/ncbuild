@@ -94,7 +94,8 @@ opt_spfuncs() {
 }
 
 get_options() {
-    eval set -- "$(getopt -o atisNmwxldncvh -l ascii,reentrant,interop,spfuncs,native,msvcrt,woa,x86,libseparate,dynamic,nodebug,clean,verbose,help -- "$@")"
+    local G=$(get_getopt)
+    eval set -- "$($G -o atisNmwxldncvh -l ascii,reentrant,interop,spfuncs,native,msvcrt,woa,x86,libseparate,dynamic,nodebug,clean,verbose,help -- "$@")"
 
     while true
     do
