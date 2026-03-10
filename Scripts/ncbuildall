@@ -82,11 +82,12 @@ get_options() {
     done
 }
 
-
-in_container || _fail "Not running in devcontainer." 
-
 get_options $@
 [ -n "$err" ] && _fail "Invalid options: $err"
+
+if ! opt_native; then
+    in_container || _fail "Not running in devcontainer." 
+fi
 
 addopts=
 ! opt_debug && addopts="$addopts --nodebug"

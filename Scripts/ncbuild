@@ -228,11 +228,12 @@ consistency_checks() {
     fi  
 }
 
-in_container || _fail "Not running in devcontainer." 
-
 get_options $@
 [ -n "$err" ] && _fail "Invalid options: $err"
 
+if ! opt_native; then
+    in_container || _fail "Not running in devcontainer." 
+fi
 
 _default_build=0
 [ $_nondefault_opts -eq 0 ] && _default_build=1
