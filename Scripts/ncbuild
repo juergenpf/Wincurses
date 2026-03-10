@@ -379,22 +379,18 @@ if ! opt_native; then
     fi  
     _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
 else
-    if [ "$(uname -s)" = "Darwin" ]; then
-	if [ "$(uname -m)" = "arm64" ]; then
-	    _trace "On Darwin we use the system compiler toolchain for native builds"
-	    export CC=cc
-	    export CXX=c++
-	    export CPP=cpp
-	    export LD=ld
-	    export NM=nm
-	    export AR=ar
-	    export RANLIB=ranlib
-	    export AS=as
-	    export OBJDUMP=objdump
-	    export STRIP=strip
-	else
-	    _fail "We support native Darwin builds only on Apple silicon."
-	fi
+    if is_native_darwin_arm; then
+	_trace "On Darwin we use the system compiler toolchain for native builds"
+	export CC=cc
+	export CXX=c++
+	export CPP=cpp
+	export LD=ld
+	export NM=nm
+	export AR=ar
+	export RANLIB=ranlib
+	export AS=as
+	export OBJDUMP=objdump
+	export STRIP=strip
     fi
 fi
 
@@ -543,7 +539,9 @@ do_config() {
 
     if opt_dynamic; then
         if opt_native; then
-            ldflags="-static-libgcc -Wl,-Bdynamic"
+	    if ! is_native_darwin_arm; then
+		ldflags="-static-libgcc -Wl,-Bdynamic"
+	    fi
         else
             ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
         fi

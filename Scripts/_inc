@@ -46,15 +46,23 @@ maybe_parallels_desktop()
     return 1
 }
 
+is_native_darwin_arm() {
+    local res=1
+    if [ "$(uname -s)" = "Darwin" ]; then
+	if [ "$(uname -m)" = "arm64" ]; then
+	    res=0
+	fi
+    fi
+    return $res
+}
+
 # For native builds in the host environment, we have an issue on MacOS
 # We need to make sure, GNU getopt is installed
 get_getopt() {
     local g=
-    if [ "$(uname -s)" = "Darwin" ]; then
-	if [ "$(uname -m)" = "arm64" ]; then
-	    if [ -x /opt/homebrew/opt/gnu-getopt/bin/getopt ]; then
-		g=/opt/homebrew/opt/gnu-getopt/bin/getopt
-	    fi
+    if is_native_darwin_arm; then
+	if [ -x /opt/homebrew/opt/gnu-getopt/bin/getopt ]; then
+	    g=/opt/homebrew/opt/gnu-getopt/bin/getopt
 	fi
     else
 	g=$(type -p getopt)
