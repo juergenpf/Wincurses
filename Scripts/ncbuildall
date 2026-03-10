@@ -8,6 +8,7 @@ err=
 
 _opt_debug=1
 _opt_dynamic=0
+_opt_libseparate=0
 _opt_native=0
 _opt_clean=0
 
@@ -18,6 +19,11 @@ opt_debug() {
 
 opt_dynamic() {
     [ $_opt_dynamic -ne 0 ] && return 0
+    return 1
+}
+
+opt_libseparate() {
+    [ $_opt_libseparate -ne 0 ] && return 0
     return 1
 }
 
@@ -33,7 +39,7 @@ opt_clean() {
 
 get_options() {
     local G=$(get_getopt)
-    eval set -- "$($G -o cNdnvh -l clean,native,dynamic,nodebug,verbose,help -- "$@")"
+    eval set -- "$($G -o cNdlnvh -l clean,native,dynamic,libseoarate,nodebug,verbose,help -- "$@")"
 
     while true
     do
@@ -58,12 +64,17 @@ get_options() {
                 _opt_dynamic=1
                 shift
                 ;;
+            -l|--libseparate)
+                _opt_libseparate=1
+                shift
+                ;;
             -h|--help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
-                echo " -c, --clean            Clean build and install directories before building"
+                echo "  -c, --clean           Clean build and install directories before building"
                 echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
                 echo "  -d, --dynamic         Build with shared libraries (default is static)"
+                echo "  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)"
                 echo "  -n, --nodebug         Build without debug symbols and features"
                 echo "  -v, --verbose         Enable verbose output"
                 echo "  -h, --help            Show this help message and exit"
@@ -92,11 +103,12 @@ fi
 
 addopts=
 ! opt_debug && addopts="$addopts --nodebug"
-opt_dynamic && addopts="$addopts --dynamic" 
+opt_dynamic && addopts="$addopts --dynamic"
+opt_libseparate && addopts="$addopts --libseparate" 
 opt_clean   && addopts="$addopts --clean"
+opt_verbose && addopts="$addopts --verbose"
 
 if opt_native; then
-    _trace "Building for native execution in Linux (no cross-compilation)"
     addopts="$addopts --native"
     ${SCRIPT}/ncbuild $addopts
     ${SCRIPT}/ncbuild $addopts --ascii
@@ -115,7 +127,6 @@ if opt_native; then
     ${SCRIPT}/ncbuild $addopts --reentrant --interop --spfuncs
     ${SCRIPT}/ncbuild $addopts --ascii --reentrant --interop --spfuncs
 else
-    _trace "Building for Windows using cross-compilation"
     for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
     do
         ${SCRIPT}/ncbuild $addopts $p

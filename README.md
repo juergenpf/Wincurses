@@ -54,6 +54,8 @@ On MacOS we can not do a bind-mount of the local ssh-agent socket into the conta
 
 with these settings, VS Code on MacOS will handle the minimum required to allow you to access github.
 
+**WARNING** Apple apparently believes, that asking the OS for the name of the timezone is a security relevant thing and you need `sudo` priviledge to do that. Most developers have that on their dev-machines, so depending on your setup be prepared, that `configure` may ask for your password to get permission to enter sudo mode.
+
 The final "`code .`" will now bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
 
 If everything worked as expected, you should see
@@ -81,7 +83,6 @@ But now it's time to talk about the scripts.
 ## The Scripts
 
 ### ncbuild
-
 
 `ncbuild` is the core script of our build system. It provides options to let you choose between:
 
@@ -178,7 +179,40 @@ After a successful build, an install will be performed into the top level inst d
 
 Even if the install fails, you may be able to run the test programs, even without insall there is no `terminfo` library available. That actually doesn't matter as the libraries are built with `ms-terminal` as a fallback terminal description in case no database could be discovered. 
 
-### Build and Install Directory Layout
+`ncbuild` is a command, that may also be run outside of the devcontainer. In that case, I assume, that the host OS has the necessary toolchains (gcc, binutils etc.) installed, to be able to compile ncurses. Please note, that when running outside the devcontainer, there is pne issue on MacOS. MacOS has a getopt, that is incompatible with GNUU getopt, which I use in the scripts. You must use your preferred MacOS package manager, to install GNU getopt, e.g. with [Homebrew](https://brew.sh/) you may use
+```bash
+brew install gnu-getopt
+```
+
+### ncnuke
+`ncnuke` will completely remove the top level directories `build` and ìnst` and v´create new ones, which are empty. Every subsequent build will start fresh. We assume this to software for adults, so no questions like "are you sure?" will be asked. We assume, you know what you are doing.
+
+### ncbuildall
+`ncbuildall` is a batch command that builds all possible combinations of certain build options in one command. If you run it for a Windows cross-build, Ut will run the build for four different environments:
+- x86_64 UCRT
+- x86_64 MSVCRT
+- x86 MSVCRT
+- woa UCRT (Windows on ARM)
+In each of these environments, it will build all possible kompintations of wide vs. non-wide and reentrant vs. non-reentrant builds, which also results in four different builds. So in sum, ypu will get 16 builds.
+
+If you run it for a native build, we will run builds for all possible combintations of
+- wide vs. non-wide build (--ascii option or not)
+- reentrant vs. non-reentrant build (--reentrant option or not)
+- interop or non-interop build (--interop option or not)
+- sp-funcs build or not (--spfuncs option or not)
+This also results in 16 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
+You may call `ncbuildall` with these options:
+```bash
+  -c, --clean           Clean build and install directories before building
+  -N, --native          Build for native execution in Linux or the host environment
+  -d, --dynamic         Build with shared libraries (default is static)
+  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
+  -n, --nodebug         Build without debug symbols and features
+  -v, --verbose         Enable verbose output
+  -h, --help            Show this help message and exit
+```
+
+## Build and Install Directory Layout
 
 The build system (see Scripts/ncbuild) creates a structured build directory to organize cross-compiled outputs for different targets and configurations. The layout is as follows:
 
