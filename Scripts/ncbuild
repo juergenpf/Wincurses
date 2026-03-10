@@ -293,6 +293,10 @@ build_prefix() {
     if ! opt_debug; then
         prefix=release
     fi
+    if opt_native; then
+        base=$(uname -s)
+        base=${base,,}
+    fi
     echo "${prefix}/${base}/${arch}"
 }
 
