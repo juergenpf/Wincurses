@@ -9,6 +9,7 @@ err=
 _opt_debug=1
 _opt_dynamic=0
 _opt_native=0
+_opt_clean=0
 
 opt_debug() {
     [ $_opt_debug -ne 0 ] && return 0
@@ -25,12 +26,21 @@ opt_native() {
     return 1
 }
 
+opt_clean() {
+    [ $_opt_clean -ne 0 ] && return 0
+    return 1
+}
+
 get_options() {
-    eval set -- "$(getopt -o Ndnvh -l native,dynamic,nodebug,verbose,help -- "$@")"
+    eval set -- "$(getopt -o cNdnvh -l clean,native,dynamic,nodebug,verbose,help -- "$@")"
 
     while true
     do
 	    case "$1" in
+            -c|--clean)
+                _opt_clean=1
+                shift
+                ;;
             -N|--native)
                 _opt_native=1
                 shift
@@ -50,6 +60,7 @@ get_options() {
             -h|--help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
+                echo " -c, --clean            Clean build and install directories before building"
                 echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
                 echo "  -d, --dynamic         Build with shared libraries (default is static)"
                 echo "  -n, --nodebug         Build without debug symbols and features"
@@ -80,33 +91,34 @@ get_options $@
 addopts=
 ! opt_debug && addopts="$addopts --nodebug"
 opt_dynamic && addopts="$addopts --dynamic" 
+opt_clean && $addopts="$addopts --clean"
 
 if opt_native; then
     _trace "Building for native execution in Linux (no cross-compilation)"
-    ncbuild --clean $addopts
-    ncbuild --clean $addopts --asci
-    ncbuild --clean $addopts --reentrant
-    ncbuild --clean $addopts --interop
-    ncbuild --clean $addopts --spfuncs
-    ncbuild --clean $addopts --asci --reentrant
-    ncbuild --clean $addopts --asci --interop
-    ncbuild --clean $addopts --asci --spfuncs
-    ncbuild --clean $addopts --reentrant --interop
-    ncbuild --clean $addopts --reentrant --spfuncs
-    ncbuild --clean $addopts --interop --spfuncs
-    ncbuild --clean $addopts --asci --reentrant --interop
-    ncbuild --clean $addopts --asci --reentrant --spfuncs
-    ncbuild --clean $addopts --asci --interop --spfuncs
-    ncbuild --clean $addopts --reentrant --interop --spfuncs
-    ncbuild --clean $addopts --asci --reentrant --interop --spfuncs
+    ncbuild $addopts
+    ncbuild $addopts --ascii
+    ncbuild $addopts --reentrant
+    ncbuild $addopts --interop
+    ncbuild $addopts --spfuncs
+    ncbuild $addopts --ascii --reentrant
+    ncbuild $addopts --ascii --interop
+    ncbuild $addopts --ascii --spfuncs
+    ncbuild $addopts --reentrant --interop
+    ncbuild $addopts --reentrant --spfuncs
+    ncbuild $addopts --interop --spfuncs
+    ncbuild $addopts --ascii --reentrant --interop
+    ncbuild $addopts --ascii --reentrant --spfuncs
+    ncbuild $addopts --ascii --interop --spfuncs
+    ncbuild $addopts --reentrant --interop --spfuncs
+    ncbuild $addopts --ascii --reentrant --interop --spfuncs
 else
     _trace "Building for Windows using cross-compilation"
-    for p in "" "--x86" "--woa"
+    for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
     do
-        ncbuild --clean $addopts $p
-        ncbuild --clean $addopts $p --asci
-        ncbuild --clean $addopts $p --reentrant
-        ncbuild --clean $addopts $p --asci --reentrant
+        ncbuild $addopts $p
+        ncbuild $addopts $p --ascii
+        ncbuild $addopts $p --reentrant
+        ncbuild $addopts $p --ascii --reentrant
     done
 fi
 exit 0

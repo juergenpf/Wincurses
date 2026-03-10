@@ -99,107 +99,107 @@ get_options() {
     while true
     do
 	    case "$1" in
-	-a|--ascii)
-	    _opt_widec=0
-	    _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-	    shift
-	    ;;
-        -t|--reentrant)
-	    _opt_reentrant=1
-	    _cfgopts=$(expr $_cfgopts + 1)
-	    _nondefault_opts=$(expr $_nondefault_opts + 1)
-	    shift
-	    ;;
-        -i|--interop)
-            _opt_interop=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            shift
-            ;;
-        -s|--spfuncs)
-            _opt_spfuncs=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-            shift
-            ;;
-        -N|--native)
-            _opt_native=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-            shift
-            ;;
-        -l|--libseparate)
-            _opt_libseparate=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-            shift
-            ;;
-        -m|--msvcrt)
-	    _opt_ucrt=0
-	    _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-	    shift
-	    ;;
-        -n|--nodebug)
-            _opt_debug=0
-            _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-            shift
-            ;;
-        -c|--clean)
-            _opt_clean=1
-            shift
-            ;;
-        -w|--woa)
-            _opt_woa=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-            shift
-            ;;
-        -x|--x86)
-            _opt_x86=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            _nondefault_opts=$(expr $_nondefault_opts + 1)
-            shift
-            ;;
-        -v|--verbose)
-            _opt_verbose=1
-            shift
-            ;;
-        -d|--dynamic)
-            _opt_dynamic=1
-            _cfgopts=$(expr $_cfgopts + 1)
-            shift
-            ;;
-        -h|--help)
-            echo "Usage: $0 [options]"
-            echo "Options:"
-            echo "  -a, --ascii           Build ASCII version (disable wide character support)"
-            echo "  -t, --reentrant       Build reentrant version"
-            echo "  -i, --interop         Build with Windows interop features enabled. Only to be used with -N|--native"
-            echo "  -s, --spfuncs         Build with sp-funcs support. Only to be used with -N|--native"
-            echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
-            echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT"
-            echo "  -w, --woa             Build for Windows on ARM (WOA) with UCRT"
-            echo "  -x, --x86             Build for x86 (i686) with MSVCRT"
-            echo "  -l, --libseparate     Build terminfo library separately from curses"
-            echo "  -d, --dynamic         Build with shared libraries (default is static)"
-            echo "  -n, --nodebug         Build without debug symbols and features"
-            echo "  -c, --clean           Clean build and install directories before building"
-            echo "  -v, --verbose         Enable verbose output"
-            echo "  -h, --help            Show this help message and exit"
-            shift
-            exit 0
-            ;;
-	    --)
-		    shift
-		    break
-		    ;;
-	    *)
-		    err="$err $1"
-		    shift
-		    break
-		    ;;
+	        -a|--ascii)
+	            _opt_widec=0
+	            _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+	            shift
+	            ;;
+            -t|--reentrant)
+	            _opt_reentrant=1
+	            _cfgopts=$(expr $_cfgopts + 1)
+	            _nondefault_opts=$(expr $_nondefault_opts + 1)
+	            shift
+	            ;;
+            -i|--interop)
+                _opt_interop=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                shift
+                ;;
+            -s|--spfuncs)
+                _opt_spfuncs=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+                shift
+                ;;
+            -N|--native)
+                _opt_native=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+                shift
+                ;;
+            -l|--libseparate)
+                _opt_libseparate=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+                shift
+                ;;
+            -m|--msvcrt)
+	            _opt_ucrt=0
+	            _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+	            shift
+	            ;;
+            -n|--nodebug)
+                _opt_debug=0
+                _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+                shift
+                ;;
+            -c|--clean)
+                _opt_clean=1
+                shift
+                ;;
+            -w|--woa)
+                _opt_woa=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+                shift
+                ;;
+            -x|--x86)
+                _opt_x86=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                _nondefault_opts=$(expr $_nondefault_opts + 1)
+                shift
+                ;;
+            -v|--verbose)
+                _opt_verbose=1
+                shift
+                ;;
+            -d|--dynamic)
+                _opt_dynamic=1
+                _cfgopts=$(expr $_cfgopts + 1)
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [options]"
+                echo "Options:"
+                echo "  -a, --ascii           Build ASCII version (disable wide character support)"
+                echo "  -t, --reentrant       Build reentrant version"
+                echo "  -i, --interop         Build with Windows interop features enabled. Only to be used with -N|--native"
+                echo "  -s, --spfuncs         Build with sp-funcs support. Only to be used with -N|--native"
+                echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
+                echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT"
+                echo "  -w, --woa             Build for Windows on ARM (WOA) with UCRT"
+                echo "  -x, --x86             Build for x86 (i686) with MSVCRT"
+                echo "  -l, --libseparate     Build terminfo library separately from curses"
+                echo "  -d, --dynamic         Build with shared libraries (default is static)"
+                echo "  -n, --nodebug         Build without debug symbols and features"
+                echo "  -c, --clean           Clean build and install directories before building"
+                echo "  -v, --verbose         Enable verbose output"
+                echo "  -h, --help            Show this help message and exit"
+                shift
+                exit 0
+                ;;
+	        --)
+		        shift
+		        break
+		        ;;
+	        *)
+		        err="$err $1"
+		        shift
+		        break
+		        ;;
 	    esac
     done
 }
