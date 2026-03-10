@@ -91,10 +91,11 @@ get_options $@
 addopts=
 ! opt_debug && addopts="$addopts --nodebug"
 opt_dynamic && addopts="$addopts --dynamic" 
-opt_clean && $addopts="$addopts --clean"
+opt_clean   && addopts="$addopts --clean"
 
 if opt_native; then
     _trace "Building for native execution in Linux (no cross-compilation)"
+    addopts="$addopts --native"
     ncbuild $addopts
     ncbuild $addopts --ascii
     ncbuild $addopts --reentrant
