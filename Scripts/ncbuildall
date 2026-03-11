@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # See License.md in the project root for license information.
 #
-SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
-. $SCRIPT/_inc
+SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
+. $SCRIPTS/_inc
 
 err=
 
@@ -110,29 +110,32 @@ opt_verbose && addopts="$addopts --verbose"
 
 if opt_native; then
     addopts="$addopts --native"
-    ${SCRIPT}/ncbuild $addopts
-    ${SCRIPT}/ncbuild $addopts --ascii
-    ${SCRIPT}/ncbuild $addopts --reentrant
-    ${SCRIPT}/ncbuild $addopts --interop
-    ${SCRIPT}/ncbuild $addopts --spfuncs
-    ${SCRIPT}/ncbuild $addopts --ascii --reentrant
-    ${SCRIPT}/ncbuild $addopts --ascii --interop
-    ${SCRIPT}/ncbuild $addopts --ascii --spfuncs
-    ${SCRIPT}/ncbuild $addopts --reentrant --interop
-    ${SCRIPT}/ncbuild $addopts --reentrant --spfuncs
-    ${SCRIPT}/ncbuild $addopts --interop --spfuncs
-    ${SCRIPT}/ncbuild $addopts --ascii --reentrant --interop
-    ${SCRIPT}/ncbuild $addopts --ascii --reentrant --spfuncs
-    ${SCRIPT}/ncbuild $addopts --ascii --interop --spfuncs
-    ${SCRIPT}/ncbuild $addopts --reentrant --interop --spfuncs
-    ${SCRIPT}/ncbuild $addopts --ascii --reentrant --interop --spfuncs
+    ${SCRIPTS}/ncbuild $addopts
+    ${SCRIPTS}/ncbuild $addopts --ascii
+    ${SCRIPTS}/ncbuild $addopts --interop
+    ${SCRIPTS}/ncbuild $addopts --spfuncs
+    ${SCRIPTS}/ncbuild $addopts --ascii --interop
+    ${SCRIPTS}/ncbuild $addopts --ascii --spfuncs
+    ${SCRIPTS}/ncbuild $addopts --interop --spfuncs
+    ${SCRIPTS}/ncbuild $addopts --ascii --interop --spfuncs
+    if ! is_native_darwin; then
+        _trace "We do not buiuld for reentrant on Darwin"
+        ${SCRIPTS}/ncbuild $addopts --reentrant
+        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant
+        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant --interop
+        ${SCRIPTS}/ncbuild $addopts --reentrant --interop
+        ${SCRIPTS}/ncbuild $addopts --reentrant --spfuncs
+        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant --spfuncs
+        ${SCRIPTS}/ncbuild $addopts --reentrant --interop --spfuncs
+        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant --interop --spfuncs
+    fi
 else
     for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
     do
-        ${SCRIPT}/ncbuild $addopts $p
-        ${SCRIPT}/ncbuild $addopts $p --ascii
-        ${SCRIPT}/ncbuild $addopts $p --reentrant
-        ${SCRIPT}/ncbuild $addopts $p --ascii --reentrant
+        ${SCRIPTS}/ncbuild $addopts $p
+        ${SCRIPTS}/ncbuild $addopts $p --ascii
+        ${SCRIPTS}/ncbuild $addopts $p --reentrant
+        ${SCRIPTS}/ncbuild $addopts $p --ascii --reentrant
     done
 fi
 exit 0

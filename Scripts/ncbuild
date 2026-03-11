@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # See License.md in the project root for license information.
 #
-SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
-. $SCRIPT/_inc
+SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
+. $SCRIPTS/_inc
 
 abiversion=6
 #
@@ -379,7 +379,7 @@ if ! opt_native; then
     fi  
     _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
 else
-    if is_native_darwin_arm; then
+    if is_native_darwin; then
 	_trace "On Darwin we use the system compiler toolchain for native builds"
 	export CC=cc
 	export CXX=c++
@@ -539,9 +539,9 @@ do_config() {
 
     if opt_dynamic; then
         if opt_native; then
-	    if ! is_native_darwin_arm; then
-		ldflags="-static-libgcc -Wl,-Bdynamic"
-	    fi
+	        if ! is_native_darwin; then
+		        ldflags="-static-libgcc -Wl,-Bdynamic"
+	        fi
         else
             ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
         fi
@@ -563,6 +563,19 @@ do_config() {
         rm -f "$NCBUILD/.static"
     fi
 }
+
+if [ "$SCRIPTNAME" = "ncbuildinfo" ]; then
+cat <<EOF
+prefix="$(get_config_prefix)"
+library_suffix="$(get_suffix)"
+extra_suffix="$(get_extra_suffix)"
+relative_build_directory="$(relative_builddir)"
+relative_install_base="$(relative_installbase)"
+relative_install_directory="$(relative_installdir)"
+target_arch="$(get_target_arch)"
+EOF
+    exit 0
+fi
 
 if [ ! -f "$NCBUILD/Makefile" ]; then
     do_config

@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
 # See License.md in the project root for license information.
 #
-SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
-NC_WORKSPACE=$(cd $SCRIPT/.. && pwd)
-
-_log() {
-    echo "$@" >&2
-}
-
-_fail() {
-    _log "ERROR: $@"
-    exit 1
-}
-
-not_implemented() {
-    _log "Not implemented: $@"
-    exit 1 
-}
+SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
+. $SCRIPTS/_inc
 
 pushd $NC_WORKSPACE > /dev/null
 _log "Cleaning build and install directories..."
