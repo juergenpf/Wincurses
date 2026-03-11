@@ -211,6 +211,8 @@ You may call `ncbuildall` with these options:
   -v, --verbose         Enable verbose output
   -h, --help            Show this help message and exit
 ```
+### ncbuildinfo
+This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
 
 ## Build and Install Directory Layout
 
@@ -296,6 +298,8 @@ pwct -x86 -msvcrt -Ascii
 ```
 will push you into the test directory of a 32-Bit build without wide-character support for the old MSVCRT C-Runtime. You may leave this location with a simple `Pop-Location` (alias: popd).
 Please note that these directories are all UNC directories pointing to locations in the dummy host `\\wsl.localhost` that Microsoft has implemented to allow Windows to navigate seamlessly into directories that are located in Linux Distributions running under WSL2. The pwct alias tries to detect the MSYS2 debugger suitable for that build target and sets an environment variable WNCDEBUG to point to that debugger.
+
+For testing and bug hunting, it is often more productive to use the builtin trace functions of ncurses, by setting the NCURSES_TRACE environment variable to a proper numeric value (see the ncurses documentation for details). But if you develop new functions, e.g. for a port to a different OS, you sometimes really need to be able to debug the code with an ordinary debugger. For the Windows cross-build environment I'll give you a few pragmatic hints how that can be done from the Windows commandline in certain specific build environments.
 
 The next actions will only be possible, if at least you have installed a minimal `MSYS2` environment and have installed the required gdb packages 
 - mingw-w64-ucrt-x86_64-gdb
