@@ -1,4 +1,7 @@
 # See License.md in the project root for license information.
+# Include file with common settings and functions for most scripts
+# Assumes, that the parent script has set the varibale SCRIPTS to 
+# the directory containing the scripts.
 SCRIPTNAME=$(basename $0)
 NC_WORKSPACE=$(cd $SCRIPTS/.. && pwd)
 
@@ -52,28 +55,22 @@ maybe_parallels_desktop()
     return 1
 }
 
+
+is_native_darwin() {
+    [ "$(uname -s)" = "Darwin" ] && return 0
+    return 1
+}
+
 is_native_darwin_arm() {
-    local res=1
-    if [ "$(uname -s)" = "Darwin" ]; then
-	    if [ "$(uname -m)" = "arm64" ]; then
-	        res=0
-	    fi
+    if is_native_darwin; then
+        [ "$(uname -m)" = "arm64" ] && return 0
     fi
-    return $res
+    return 1
 }
 
 is_native_darwin_intel() {
-    local res=1
-    if [ "$(uname -s)" = "Darwin" ]; then
-	    if [ "$(uname -m)" = "x86_64" ]; then
-	        res=0
-	    fi
+    if is_native_darwin; then
+	    [ "$(uname -m)" = "x86_64" ] && return 0
     fi
-    return $res
-}
-
-is_native_darwin() {
-    is_native_darwin_arm && return 0
-    is_native_darwin_intel && return 0
     return 1
 }
