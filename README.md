@@ -193,18 +193,18 @@ brew install gnu-getopt
 - x86_64 MSVCRT
 - x86 MSVCRT
 - woa UCRT (Windows on ARM)
-In each of these environments, it will build all possible kompintations of wide vs. non-wide and reentrant vs. non-reentrant builds, which also results in four different builds. So in sum, ypu will get 16 builds.
+In each of these four environments, it will build wide and non-wide builds, so we have 8 builds. If you use the --reentrant option, we add reentrancy to all the combinations, which will result in 16 total builds.
 
 If you run it for a native build, we will run builds for all possible combintations of
 - wide vs. non-wide build (--ascii option or not)
-- reentrant vs. non-reentrant build (--reentrant option or not)
 - interop or non-interop build (--interop option or not)
 - sp-funcs build or not (--spfuncs option or not)
-This also results in 16 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
+This results in 8 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
 You may call `ncbuildall` with these options:
 ```bash
   -c, --clean           Clean build and install directories before building
   -N, --native          Build for native execution in Linux or the host environment
+  -r, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds.
   -d, --dynamic         Build with shared libraries (default is static)
   -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
   -n, --nodebug         Build without debug symbols and features
