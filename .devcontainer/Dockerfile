@@ -122,7 +122,11 @@ RUN git clone --depth 1 https://github.com/PCRE2Project/pcre2.git /tmp/pcre2-git
     cmake --build /tmp/pcre2-msvcrt-build-x86_64 && \
     cmake --install /tmp/pcre2-msvcrt-build-x86_64 && \
     rm -rf /tmp/pcre2-msvcrt-build-x86_64 /opt/pcre2-msvcrt/x86_64/share && \
-    cd /opt/pcre2-msvcrt/x86_64/include && ln -sf pcre2posix.h regex.h
+    cd /opt/pcre2-msvcrt/x86_64/include && rm -f regex.h \
+    echo "#ifndef REGEX_H_COMPAT" > regex.h && \
+    echo "#define REGEX_H_COMPAT" >> regex.h && \
+    echo "#include <pcre2posix.h>" >> regex.h && \
+    echo "#endif /* REGEX_H_COMPAT */" >> regex.h
 
 # 2) MSVCRT minimal (ASCII, POSIX, 32-Bit)
 RUN mkdir -p /tmp/pcre2-msvcrt-build-i686 && \
@@ -144,7 +148,11 @@ RUN mkdir -p /tmp/pcre2-msvcrt-build-i686 && \
     cmake --build /tmp/pcre2-msvcrt-build-i686 && \
     cmake --install /tmp/pcre2-msvcrt-build-i686 && \
     rm -rf /tmp/pcre2-msvcrt-build-i686 /opt/pcre2-msvcrt/i686/share && \
-    cd /opt/pcre2-msvcrt/i686/include && ln -sf pcre2posix.h regex.h
+    cd /opt/pcre2-msvcrt/i686/include && rm -f regex.h && \
+    echo "#ifndef REGEX_H_COMPAT" > regex.h && \
+    echo "#define REGEX_H_COMPAT" >> regex.h && \
+    echo "#include <pcre2posix.h>" >> regex.h && \
+    echo "#endif /* REGEX_H_COMPAT */" >> regex.h
 
 # 3) UCRT UTF+Unicode (for GCC 64-Bit Intel)
 RUN mkdir -p /tmp/pcre2-ucrt-build-x86_64 && \
@@ -165,7 +173,11 @@ RUN mkdir -p /tmp/pcre2-ucrt-build-x86_64 && \
     cmake --build /tmp/pcre2-ucrt-build-x86_64 && \
     cmake --install /tmp/pcre2-ucrt-build-x86_64 && \
     rm -rf /tmp/pcre2-ucrt-build-x86_64  /opt/pcre2-ucrt/x86_64/share && \
-    cd /opt/pcre2-ucrt/x86_64/include && ln -sf pcre2posix.h regex.h
+    cd /opt/pcre2-ucrt/x86_64/include && rm -f regex.h && \
+    echo "#ifndef REGEX_H_COMPAT" > regex.h && \
+    echo "#define REGEX_H_COMPAT" >> regex.h && \
+    echo "#include <pcre2posix.h>" >> regex.h && \
+    echo "#endif /* REGEX_H_COMPAT */" >> regex.h
 
 ENV ORIG_PATH="$PATH"
 ENV PATH="/opt/llvm-mingw/bin:${PATH}"
@@ -190,7 +202,11 @@ RUN mkdir -p /tmp/pcre2-ucrt-build-aarch64 && \
     cmake --build /tmp/pcre2-ucrt-build-aarch64 && \
     cmake --install /tmp/pcre2-ucrt-build-aarch64 && \
     rm -rf /tmp/pcre2-ucrt-build-aarch64  /opt/pcre2-ucrt/aarch64/share && \
-    cd /opt/pcre2-ucrt/aarch64/include && ln -sf pcre2posix.h regex.h && \
+    cd /opt/pcre2-ucrt/aarch64/include && rm -f regex.h && \
+    echo "#ifndef REGEX_H_COMPAT" > regex.h && \
+    echo "#define REGEX_H_COMPAT" >> regex.h && \
+    echo "#include <pcre2posix.h>" >> regex.h && \
+    echo "#endif /* REGEX_H_COMPAT */" >> regex.h && \
     rm -rf /tmp/pcre2-git
 
 ENV PATH="$ORIG_PATH"

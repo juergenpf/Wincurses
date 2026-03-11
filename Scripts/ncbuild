@@ -462,20 +462,17 @@ do_config() {
 
     if ! opt_native; then
         opts+=" --enable-named-pipes \
-            --with-pcre2 \
             --disable-home-terminfo \
             --disable-symlinks \
             --with-fallbacks=ms-terminal \
             --without-manpages"
+        # we enforce PCRE2 usage on Windows build in this devcontainer.            
+        cflags="$cflags -I${PCRE2_ROOT}/include -DPCRE2_STATIC -DHAVE_REGEX_H=1 -DHAVE_REGEX_H_FUNCS=1"
+        ldflags="$ldflags -L${PCRE2_ROOT}/lib"
     fi    
     rm -rf "$NCBUILD"
     mkdir -p "$NCBUILD"
     _trace "Recreated build directory: ${NCBUILD}"
-
-    if ! opt_native; then
-        cflags="-I${PCRE2_ROOT}/include"
-        ldflags="-L${PCRE2_ROOT}/lib -lpcre2-posix -lpcre2-8"
-    fi
 
     opts="$opts --with-normal \
         --with-pkg-config \
@@ -527,20 +524,28 @@ do_config() {
     if opt_dynamic; then
         if opt_native; then
 	        if ! is_native_darwin; then
-		        ldflags="-static-libgcc -Wl,-Bdynamic"
+		        ldflags="$ldflags -static-libgcc -Wl,-Bdynamic"
 	        fi
         else
-            ldflags="-static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+            ldflags="$ldflags -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
         fi
     fi
 
     _trace "Configuration options: ${opts}"
 
     pushd "$NCBUILD" >/dev/null
-    CFLAGS="${cflags}" LDFLAGS="${ldflags}" \
-    ${cfg} ${opts} --prefix="/${prefix}" \
-        --datadir="/${prefix}/share" \
-        --srcdir="${srcdir}"
+    if ! opt_native; then
+        # Add PCRE2 libraries to LIBS so they appear at the end of the link line
+        CFLAGS="${cflags}" LDFLAGS="${ldflags}" LIBS="-lpcre2-posix -lpcre2-8" \
+        ${cfg} ${opts} --prefix="/${prefix}" \
+            --datadir="/${prefix}/share" \
+            --srcdir="${srcdir}"
+    else
+        CFLAGS="${cflags}" LDFLAGS="${ldflags}" \
+        ${cfg} ${opts} --prefix="/${prefix}" \
+            --datadir="/${prefix}/share" \
+            --srcdir="${srcdir}"
+    fi
     popd >/dev/null
     if ! opt_dynamic; then
         echo "S" > "$NCBUILD/.static"
