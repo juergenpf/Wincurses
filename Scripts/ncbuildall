@@ -38,35 +38,27 @@ opt_clean() {
 }
 
 get_options() {
-    local G=$(get_getopt)
-    eval set -- "$($G -o cNdlnvh -l clean,native,dynamic,libseoarate,nodebug,verbose,help -- "$@")"
-
-    while true
+    local err=
+    while [[ $# -gt 0 ]]
     do
 	    case "$1" in
             -c|--clean)
                 _opt_clean=1
-                shift
                 ;;
             -N|--native)
                 _opt_native=1
-                shift
                 ;;
             -n|--nodebug)
                 _opt_debug=0
-                shift
                 ;;
             -v|--verbose)
                 _opt_verbose=1
-                shift
                 ;;
             -d|--dynamic)
                 _opt_dynamic=1
-                shift
                 ;;
             -l|--libseparate)
                 _opt_libseparate=1
-                shift
                 ;;
             -h|--help)
                 echo "Usage: $0 [options]"
@@ -78,24 +70,28 @@ get_options() {
                 echo "  -n, --nodebug         Build without debug symbols and features"
                 echo "  -v, --verbose         Enable verbose output"
                 echo "  -h, --help            Show this help message and exit"
-                shift
                 exit 0
                 ;;
-	    --)
-		    shift
-		    break
-		    ;;
-	    *)
-		    err="$err $1"
-		    shift
-		    break
-		    ;;
+	        --)
+		        shift
+		        break
+		        ;;
+            -*)
+                _fail "Unknown option: $1"
+                ;;    
+	        *)
+		        err="$err $1"
+		        break
+		        ;;
 	    esac
+        shift
     done
+    [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
+    return 0
 }
 
 get_options $@
-[ -n "$err" ] && _fail "Invalid options: $err"
+[ $? -ne 0 ] && _fail "Invalid options: $err"
 
 if ! opt_native; then
     in_container || _fail "Not running in devcontainer." 

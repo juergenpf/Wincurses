@@ -77,24 +77,3 @@ is_native_darwin() {
     is_native_darwin_intel && return 0
     return 1
 }
-
-# For native builds in the host environment, we have an issue on MacOS
-# We need to make sure, GNU getopt is installed
-get_getopt() {
-    local g=
-    if is_native_darwin_arm; then
-    	if [ -x /opt/homebrew/opt/gnu-getopt/bin/getopt ]; then
-	        g=/opt/homebrew/opt/gnu-getopt/bin/getopt
-	    fi
-    elif is_native_darwin_intel; then
-    	if [ -x /usr/local/homebrew/opt/gnu-getopt/bin/getopt ]; then
-	        g=/usr/local/homebrew/opt/gnu-getopt/bin/getopt
-	    fi
-    else
-    	g=$(type -p getopt)
-    fi
-    [ -n "$g" ] || _fail "GNU getopt not found. On MacOS you need to install it, e.g. with 'brew install gnu-getopt'"
-    echo $g
-}
-
-_log "Running $SCRIPTNAME"

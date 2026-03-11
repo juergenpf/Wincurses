@@ -15,8 +15,6 @@ CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
 NATIVE_PREFIX=usr             # Native Linux build
 #
 
-err=
-
 _cfgopts=0 # Count the number of options that affect the configuration
 _nondefault_opts=0 # Count the number of options that differ from the default configuration
 
@@ -94,83 +92,68 @@ opt_spfuncs() {
 }
 
 get_options() {
-    local G=$(get_getopt)
-    eval set -- "$($G -o atisNmwxldncvh -l ascii,reentrant,interop,spfuncs,native,msvcrt,woa,x86,libseparate,dynamic,nodebug,clean,verbose,help -- "$@")"
-
-    while true
+    local err=
+    while [[ $# -gt 0 ]]
     do
 	    case "$1" in
 	        -a|--ascii)
 	            _opt_widec=0
 	            _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-	            shift
 	            ;;
             -t|--reentrant)
 	            _opt_reentrant=1
 	            _cfgopts=$(expr $_cfgopts + 1)
 	            _nondefault_opts=$(expr $_nondefault_opts + 1)
-	            shift
 	            ;;
             -i|--interop)
                 _opt_interop=1
                 _cfgopts=$(expr $_cfgopts + 1)
-                shift
                 ;;
             -s|--spfuncs)
                 _opt_spfuncs=1
                 _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-                shift
                 ;;
             -N|--native)
                 _opt_native=1
                 _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-                shift
                 ;;
             -l|--libseparate)
                 _opt_libseparate=1
                 _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-                shift
                 ;;
             -m|--msvcrt)
 	            _opt_ucrt=0
 	            _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-	            shift
 	            ;;
             -n|--nodebug)
                 _opt_debug=0
                 _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-                shift
                 ;;
             -c|--clean)
                 _opt_clean=1
-                shift
                 ;;
             -w|--woa)
                 _opt_woa=1
                 _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-                shift
                 ;;
             -x|--x86)
                 _opt_x86=1
                 _cfgopts=$(expr $_cfgopts + 1)
                 _nondefault_opts=$(expr $_nondefault_opts + 1)
-                shift
                 ;;
             -v|--verbose)
                 _opt_verbose=1
-                shift
                 ;;
             -d|--dynamic)
                 _opt_dynamic=1
                 _cfgopts=$(expr $_cfgopts + 1)
-                shift
                 ;;
             -h|--help)
                 echo "Usage: $0 [options]"
@@ -196,13 +179,17 @@ get_options() {
 		        shift
 		        break
 		        ;;
+            -*)
+                _fail "Unknown option: $1"
+                ;;
 	        *)
 		        err="$err $1"
-		        shift
-		        break
 		        ;;
 	    esac
+        shift
     done
+    [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
+    return 0
 }
 
 consistency_checks() {
@@ -230,7 +217,7 @@ consistency_checks() {
 }
 
 get_options $@
-[ -n "$err" ] && _fail "Invalid options: $err"
+[ $? -ne 0 ]  && _fail "Error parsing options"
 
 if ! opt_native; then
     in_container || _fail "Not running in devcontainer." 
