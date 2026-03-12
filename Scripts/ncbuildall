@@ -43,6 +43,11 @@ opt_clean() {
     return 1
 }
 
+doit() {
+    ${SCRIPTS}/ncbuild $@
+    [ $? -ne 0 ] && _fail "Build failed with options: $@"
+}
+
 get_options() {
     local err=
     while [[ $# -gt 0 ]]
@@ -116,34 +121,34 @@ opt_verbose && addopts="$addopts --verbose"
 
 if opt_native; then
     addopts="$addopts --native"
-    ${SCRIPTS}/ncbuild $addopts
-    ${SCRIPTS}/ncbuild $addopts --ascii
-    ${SCRIPTS}/ncbuild $addopts --interop
-    ${SCRIPTS}/ncbuild $addopts --spfuncs
-    ${SCRIPTS}/ncbuild $addopts --ascii --interop
-    ${SCRIPTS}/ncbuild $addopts --ascii --spfuncs
-    ${SCRIPTS}/ncbuild $addopts --interop --spfuncs
-    ${SCRIPTS}/ncbuild $addopts --ascii --interop --spfuncs
+    doit $addopts
+    doit $addopts --ascii
+    doit $addopts --interop
+    doit $addopts --spfuncs
+    doit $addopts --ascii --interop
+    doit $addopts --ascii --spfuncs
+    doit $addopts --interop --spfuncs
+    doit $addopts --ascii --interop --spfuncs
     if opt_reentrant; then
         _trace "We also do all the combinations with --reentrant, which results in 16 builds total."
-        ${SCRIPTS}/ncbuild $addopts --reentrant
-        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant
-        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant --interop
-        ${SCRIPTS}/ncbuild $addopts --reentrant --interop
-        ${SCRIPTS}/ncbuild $addopts --reentrant --spfuncs
-        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant --spfuncs
-        ${SCRIPTS}/ncbuild $addopts --reentrant --interop --spfuncs
-        ${SCRIPTS}/ncbuild $addopts --ascii --reentrant --interop --spfuncs
+        doit $addopts --reentrant
+        doit $addopts --ascii --reentrant
+        doit $addopts --ascii --reentrant --interop
+        doit $addopts --reentrant --interop
+        doit $addopts --reentrant --spfuncs
+        doit $addopts --ascii --reentrant --spfuncs
+        doit $addopts --reentrant --interop --spfuncs
+        doit $addopts --ascii --reentrant --interop --spfuncs
     fi
 else
     for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
     do
-        ${SCRIPTS}/ncbuild $addopts $p
-        ${SCRIPTS}/ncbuild $addopts $p --ascii
+        doit $addopts $p
+        doit $addopts $p --ascii
         if opt_reentrant; then
             _trace "We also do all the combinations with --reentrant, which results in 16 builds total."
-            ${SCRIPTS}/ncbuild $addopts $p --reentrant
-            ${SCRIPTS}/ncbuild $addopts $p --ascii --reentrant
+            doit $addopts $p --reentrant
+            doit $addopts $p --ascii --reentrant
         fi
     done
 fi

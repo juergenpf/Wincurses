@@ -3,7 +3,20 @@
 # Assumes, that the parent script has set the varibale SCRIPTS to 
 # the directory containing the scripts.
 SCRIPTNAME=$(basename $0)
-NC_WORKSPACE=$(cd $SCRIPTS/.. && pwd)
+PROJROOT=$(cd $SCRIPTS/.. && pwd)
+
+abiversion=6
+#
+# Subdirectory prefixes for MSYS2 builds
+MINGW64_PREFIX=mingw64        # x86_64 gcc msvcrt
+MINGW32_PREFIX=mingw32        # i686 gcc msvcrt
+UCRT64_PREFIX=ucrt64          # x86_64 gcc ucrt
+CLANG64_PREFIX=clang64        # x86_64 clang ucrt
+CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
+NATIVE_PREFIX=usr             # Native Linux build
+
+_relative_instroot=inst
+_relative_buildroot=build
 
 _opt_verbose=0
 
@@ -51,7 +64,7 @@ in_wsl2() {
 
 maybe_parallels_desktop() 
 {
-    [ -f "${NC_WORKSPACE}/.prlpath" ] && return 0
+    [ -f "${PROJROOT}/.prlpath" ] && return 0
     return 1
 }
 
@@ -73,4 +86,257 @@ is_native_darwin_intel() {
 	    [ "$(uname -m)" = "x86_64" ] && return 0
     fi
     return 1
+}
+
+common_consistency_checks() {
+    local _widec=1
+    local _reentrant=0
+    local _interop=0
+    local _spfuncs=0
+    local _native=0
+    local _libseoarate=0
+    local _ucrt=1
+    local _debug=1
+    local _woa=0
+    local _x86=0
+    local _dynamic=0
+
+    while [[ $# -gt 0  ]]
+    do
+        case "$1" in
+	        -a|--ascii)
+	            _widec=0
+	            ;;
+            -t|--reentrant)
+	            _reentrant=1
+	            ;;
+            -i|--interop)
+                _interop=1
+                ;;
+            -s|--spfuncs)
+                _spfuncs=1
+                ;;
+            -N|--native)
+                _native=1
+                ;;
+            -l|--libseparate)
+                _libseparate=1
+                ;;
+            -m|--msvcrt)
+	            _ucrt=0
+	            ;;
+            -n|--nodebug)
+                _debug=0
+                ;;
+            -w|--woa)
+                _woa=1
+                ;;
+            -x|--x86)
+                _x86=1
+                ;;
+            -d|--dynamic)
+                _dynamic=1
+                ;;
+            *)  ;;
+        esac
+        shift
+    done
+
+    [ $_spfuncs -ne 0 ] && [ $_native -eq 0 ] && _fail "sp-funcs support is only available for native builds."
+    [ $_interop -ne 0 ]  && [ $_native -eq 0 ] &&  _fail "Please specify interop only on native builds. On Windows it is implicit."
+    [ $_ucrt -eq 0 ]     && [ $_native -ne 0 ] && _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
+    [ $_x86 -ne 0 -o $_woa -ne 0 ] && [ $_native -ne 0 ] && _fail "--x86 or --woa are specific for Windows cross builds and cannot be used for native builds." 
+    [ $_x86 -ne 0 ] && [ $_woa -ne 0 ] &&  _fail "x86 and WOA build options are mutually exclusive."
+    [ $_x86 -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "x86 builds for UCRT are not supported."
+    [ $_woa -ne 0 ] && [ $_ucrt -eq 0 ] && _fail "--woa and --msvcrt are not compatible. Windows on ARM implies ucrt"
+    return 0   
+}
+
+get_config_prefix() {
+    local prefix="$UCRT64_PREFIX"
+    local isx86=0
+    local ismsvcrt=0
+
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do
+        case "$1" in
+            -w|--woa)
+                prefix="${CLANG64ARM_PREFIX}"
+                break
+                ;;
+            -x|--x86)
+                isx86=1
+                ;;
+            -N|--native)
+                prefix="${NATIVE_PREFIX}"
+                break
+                ;;
+            -m|--msvcrt)
+                ismsvcrt=1
+                ;;
+             *) ;;
+        esac
+        shift
+    done
+    if [ $isx86 -ne 0 ]; then
+        if [ $ismsvcrt -ne 0 ]; then
+            prefix="$MINGW32_PREFIX"
+        else
+            _fail "--x86 requires --msvcrt"
+        fi
+    else 
+        if [ $ismsvcrt -ne 0 ]; then
+            prefix="$MINGW64_PREFIX"
+        fi
+    fi 
+    echo "$prefix"
+    return 0
+}
+
+get_target_arch() {
+    local arch=x86_64
+
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do
+        case "$1" in
+            -w|--woa)
+                arch="aarch64"
+                break
+                ;;
+            -x|--x86)
+                arch="i686"
+                break
+                ;;
+            -N|--native)
+                arch="$(uname -m)"
+                break
+                ;;
+             *) ;;  
+        esac
+        shift
+    done
+    echo "$arch"
+    return 0
+}
+
+build_prefix() {
+    local prefix=debug
+    local arch=$(get_target_arch "$@")
+    local base=WindowsCross
+
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do
+        case "$1" in
+            -n|--nodebug)
+                prefix=release
+                ;;
+            -N|--native)
+                base=$(uname -s)
+                base=${base,,}  
+                ;;                
+             *) ;;
+        esac
+        shift
+    done
+    echo "${prefix}/${base}/${arch}"
+}
+
+get_suffix() {
+    local sufft=
+    local suffw=w
+
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do
+        case "$1" in
+            -a|--ascii)
+                suffw=
+                ;;
+            -r|--reentrant)
+                sufft=t
+                ;;
+            *)  ;;
+        esac
+        shift  
+    done
+    echo "${sufft}${suffw}"
+}
+
+get_extra_suffix() {
+    local s_suff=
+    local i_suff=
+
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do        
+        case "$1" in
+            -i|--interop)
+                i_suff=i
+                ;;
+            -s|--spfuncs)
+                s_suff=s
+                ;;    
+            *) ;;
+        esac
+        shift
+    done        
+    echo "${s_suff}${i_suff}"
+}
+
+relative_builddir() {
+    local suffix=$(get_suffix "$@")$(get_extra_suffix "$@")
+    local pre=$(build_prefix "$@")
+    local config_prefix=$(get_config_prefix "$@")
+    common_consistency_checks "$@"
+    echo "${pre}/nc${suffix}/${config_prefix}"
+}
+
+relative_installbase() {
+    local suffix=$(get_suffix "$@")$(get_extra_suffix "$@")
+    local pre=$(build_prefix "$@")
+    common_consistency_checks "$@"
+    echo "${pre}/nc${suffix}"
+}
+
+relative_installdir() {
+    local config_prefix=$(get_config_prefix "$@")
+    common_consistency_checks "$@"
+    echo "$(relative_installbase "$@")/${config_prefix}"
+}
+
+get_host_bht() {
+    local host_bht="x86_64-w64-mingw32ucrt"
+    local isx86=0
+    local ismsvcrt=0
+
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do
+        case "$1" in
+            -w|--woa)
+                host_bht="aarch64-w64-mingw32"
+                break
+                ;;
+            -x|--x86)
+                isx86=1
+                ;;
+            -m|--msvcrt)
+                ismsvcrt=1
+                ;;
+             *) ;;
+        esac
+        shift
+    done
+    if [ $ismsvcrt -ne 0 ]; then
+        if [ $isx86 -ne 0 ]; then
+            host_bht="i686-w64-mingw32"
+        else
+            host_bht="x86_64-w64-mingw32"
+        fi
+    fi
+    echo "$host_bht"
+    return 0
 }

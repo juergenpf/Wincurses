@@ -4,16 +4,6 @@
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/_inc
 
-abiversion=6
-#
-# Subdirectory prefixes for MSYS2 builds
-MINGW64_PREFIX=mingw64        # x86_64 gcc msvcrt
-MINGW32_PREFIX=mingw32        # i686 gcc msvcrt
-UCRT64_PREFIX=ucrt64          # x86_64 gcc ucrt
-CLANG64_PREFIX=clang64        # x86_64 clang ucrt
-CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
-NATIVE_PREFIX=usr             # Native Linux build
-#
 
 _cfgopts=0 # Count the number of options that affect the configuration
 _nondefault_opts=0 # Count the number of options that differ from the default configuration
@@ -192,30 +182,6 @@ get_options() {
     return 0
 }
 
-consistency_checks() {
-    if opt_spfuncs && ! opt_native; then
-        _fail "sp-funcs support is only available for native builds."
-    fi
-    if opt_interop && ! opt_native; then
-        _fail "Please specify interop only on native builds. On Windows it is implicit."
-    fi
-    if opt_native && ! opt_ucrt; then
-        _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
-    fi
-    if opt_native && (opt_x86 || opt_woa) ; then
-        _fail "--x86 or --WoA are specific for Windows cross builds and cannot be used for native builds." 
-    fi
-    if opt_x86 && opt_woa; then
-        _fail "x86 and WOA build options are mutually exclusive."
-    fi
-    if opt_x86 && opt_ucrt; then
-        _fail "x86 builds for UCRT are not supported."
-    fi
-    if opt_woa && ! opt_ucrt; then
-        _fail "WOA builds require UCRT."
-    fi  
-}
-
 get_options $@
 [ $? -ne 0 ]  && _fail "Error parsing options"
 
@@ -232,7 +198,7 @@ if [ $_default_build -ne 0 ]; then
     _opt_debug=1
 fi
 
-consistency_checks
+common_consistency_checks "$@"
 
 if ! opt_native ; then
 # On Windows we enforce interop and disable spfuncs.
@@ -241,96 +207,14 @@ if ! opt_native ; then
     _opt_spfuncs=0
 fi
 
-_relative_instroot=inst
-_relative_buildroot=build
+_trace "Build prefix: $(build_prefix "$@")"
+_trace "Configuration prefix: $(get_config_prefix "$@")"
+_trace "Library suffix: $(get_suffix "$@")"
+_trace "Relative build directory: $(relative_builddir "$@")"
+_trace "Relative install base: $(relative_installbase "$@")"
+_trace "Relative install directory: $(relative_installdir "$@")"
 
-get_config_prefix() {
-    local prefix=
-    if opt_woa; then
-        prefix="${CLANG64ARM_PREFIX}"
-    elif opt_x86; then
-        prefix="${MINGW32_PREFIX}"
-    elif opt_native; then
-        prefix=$NATIVE_PREFIX
-    else
-        if opt_ucrt ; then
-            prefix="${UCRT64_PREFIX}"
-        else
-            prefix="${MINGW64_PREFIX}"
-        fi
-    fi
-    echo "$prefix"
-}
-
-get_target_arch() {
-    local arch=x86_64
-    if opt_woa; then
-        arch=aarch64
-    elif opt_x86; then
-        arch=i686
-    elif opt_native; then
-        arch=$(uname -m)
-    fi
-    echo "$arch"    
-}
-
-build_prefix() {
-    local prefix=debug
-    local arch=$(get_target_arch)
-    local base=WindowsCross
-
-    if ! opt_debug; then
-        prefix=release
-    fi
-    if opt_native; then
-        base=$(uname -s)
-        base=${base,,}
-    fi
-    echo "${prefix}/${base}/${arch}"
-}
-
-get_suffix() {
-    local libsuffix=
-    opt_reentrant && libsuffix="${libsuffix}t"
-    opt_widec && libsuffix="${libsuffix}w"
-    echo "$libsuffix"
-}
-
-get_extra_suffix() {
-    local suffix=
-    if opt_native; then
-        opt_spfuncs && suffix="${suffix}s"
-        opt_interop && suffix="${suffix}i"
-    fi
-    echo "$suffix"
-}
-
-relative_builddir() {
-    local suffix=$(get_suffix)$(get_extra_suffix)
-    local pre=$(build_prefix)
-    local config_prefix=$(get_config_prefix)
-    echo "${pre}/nc${suffix}/${config_prefix}"
-}
-
-relative_installbase() {
-    local suffix=$(get_suffix)$(get_extra_suffix)
-    local pre=$(build_prefix)
-    echo "${pre}/nc${suffix}"
-}
-
-relative_installdir() {
-    local config_prefix=$(get_config_prefix)
-    echo "$(relative_installbase)/${config_prefix}"
-}
-
-_trace "Build prefix: $(build_prefix)"
-_trace "Configuration prefix: $(get_config_prefix)"
-_trace "Library suffix: $(get_suffix)"
-_trace "Relative build directory: $(relative_builddir)"
-_trace "Relative install base: $(relative_installbase)"
-_trace "Relative install directory: $(relative_installdir)"
-
-NCBUILD=${NC_WORKSPACE}/${_relative_buildroot}/$(relative_builddir)
+NCBUILD=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "$@")
 if opt_clean; then
     _trace "Cleaning build directory: ${NCBUILD}"
     rm -rf "${NCBUILD}"
@@ -338,7 +222,7 @@ fi
 _trace "NCBUILD: ${NCBUILD}, creating..."
 mkdir -p "${NCBUILD}"
 
-NCINST=${NC_WORKSPACE}/${_relative_instroot}/$(relative_installbase)
+NCINST=${PROJROOT}/${_relative_instroot}/$(relative_installbase "$@")
 if opt_clean; then
     _trace "Cleaning install directory: ${NCINST}"
     rm -rf "${NCINST}"
@@ -348,16 +232,9 @@ mkdir -p "${NCINST}"
 
 build_bht=$(uname -m)-linux-gnu
 host_bht=
-if opt_woa; then
-    host_bht="aarch64-w64-mingw32"
-elif opt_x86; then  
-    host_bht="i686-w64-mingw32"
-else
-    host_bht="x86_64-w64-mingw32"
-    opt_ucrt && host_bht="x86_64-w64-mingw32ucrt"
-fi
 if ! opt_native; then
-    env_file=$NC_WORKSPACE/.devcontainer/crossenvs/${host_bht}.env
+    host_bht=$(get_host_bht "$@")
+    env_file=$PROJROOT/.devcontainer/crossenvs/${host_bht}.env
     if [ -f "$env_file" ]; then
         _trace "Sourcing cross build environment from: ${env_file}"
         source "$env_file"
@@ -367,17 +244,17 @@ if ! opt_native; then
     _trace "Host target compiler: ${host_bht}, Build environment: ${build_bht}"
 else
     if is_native_darwin; then
-	_trace "On Darwin we use the system compiler toolchain for native builds"
-	export CC=cc
-	export CXX=c++
-	export CPP=cpp
-	export LD=ld
-	export NM=nm
-	export AR=ar
-	export RANLIB=ranlib
-	export AS=as
-	export OBJDUMP=objdump
-	export STRIP=strip
+	    _trace "On Darwin we use the system compiler toolchain for native builds"
+	    export CC=cc
+	    export CXX=c++
+	    export CPP=cpp
+	    export LD=ld
+	    export NM=nm
+	    export AR=ar
+	    export RANLIB=ranlib
+	    export AS=as
+	    export OBJDUMP=objdump
+	    export STRIP=strip
     fi
 fi
 
@@ -389,12 +266,12 @@ fi
 gen_gdbinit() {
     local d
     local p 
-    pushd "$NC_WORKSPACE" >/dev/null
+    pushd "$PROJROOT" >/dev/null
     for p in $(for d in ncurses panel menu form test; do find ncurses/$d -type d ; done | grep -v package)
     do
         echo "directory //wsl\$/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/${p}"
     done
-    echo "directory //wsl\$/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/build/$(relative_builddir)/include"
+    echo "directory //wsl\$/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/build/$(relative_builddir "$@")/include"
     popd >/dev/null
 }
 
@@ -404,27 +281,27 @@ gen_gdbinit_prl() {
     local d
     local p
     local win_p 
-    source "${NC_WORKSPACE}/.prlpath" 
-    pushd "$NC_WORKSPACE" >/dev/null
+    source "${PROJROOT}/.prlpath" 
+    pushd "$PROJROOT" >/dev/null
     win_p="${WIN_REPO_PATH//\\/\/}"
     for p in $(for d in ncurses panel menu form test; do find ncurses/$d -type d ; done | grep -v package)
     do
         echo "directory ${win_p}/$p"
     done
-    p="build/$(relative_builddir)/include"
+    p="build/$(relative_builddir "$@")/include"
     echo "directory ${win_p}/$p"
     popd >/dev/null
 }
 
 
 do_config() {
-    local srcdir=$NC_WORKSPACE/ncurses
+    local srcdir=$PROJROOT/ncurses
     local cfg=$srcdir/configure
     local dynopts="--with-shared"
     local opts=
     local cflags= 
     local ldflags=
-    local prefix=$(get_config_prefix)
+    local prefix=$(get_config_prefix "$@")
 
     [ -x "$cfg" ] || _fail "Configure script not found or not executable: $cfg"
 
@@ -558,26 +435,26 @@ do_config() {
 
 if [ "$SCRIPTNAME" = "ncbuildinfo" ]; then
 cat <<EOF
-prefix="$(get_config_prefix)"
-library_suffix="$(get_suffix)"
-extra_suffix="$(get_extra_suffix)"
-relative_build_directory="$(relative_builddir)"
-relative_install_base="$(relative_installbase)"
-relative_install_directory="$(relative_installdir)"
-target_arch="$(get_target_arch)"
+prefix="$(get_config_prefix "$@")"
+library_suffix="$(get_suffix "$@")"
+extra_suffix="$(get_extra_suffix "$@")"
+relative_build_directory="$(relative_builddir "$@")"
+relative_install_base="$(relative_installbase "$@")"
+relative_install_directory="$(relative_installdir "$@")" 
+target_arch="$(get_target_arch "$@")"
 EOF
     exit 0
 fi
 
 if [ ! -f "$NCBUILD/Makefile" ]; then
-    do_config
+    do_config "$@"
 else
     if ! opt_dynamic && [ -f "$NCBUILD/.dynamic" ]; then
         _trace "Configuration mismatch: previously configured for dynamic, now static. Reconfiguring..."
-        do_config
+        do_config "$@"
     elif opt_dynamic && [ -f "$NCBUILD/.static" ]; then
         _trace "Configuration mismatch: previously configured for static, now dynamic. Reconfiguring..."
-        do_config
+        do_config "$@"
     else
         _trace "Existing configuration matches current options. Skipping configuration step."
     fi
@@ -588,11 +465,11 @@ make -j$(nproc) -C "$NCBUILD"
 
 if opt_debug && ! opt_woa ; then
     if maybe_parallels_desktop; then
-        gen_gdbinit_prl > ${NCBUILD}/test/.gdbinit
+        gen_gdbinit_prl "$@" > ${NCBUILD}/test/.gdbinit
         _trace "Generated .gdbinit for Parallels Desktop: ${NCBUILD}/test/.gdbinit"
     fi
     if in_wsl2; then
-            gen_gdbinit > ${NCBUILD}/test/.gdbinit
+            gen_gdbinit "$@" > ${NCBUILD}/test/.gdbinit
             _trace "Generated .gdbinit for WSL2: ${NCBUILD}/test/.gdbinit"
     fi
 fi
