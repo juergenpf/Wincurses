@@ -221,10 +221,29 @@ get_target_arch() {
     return 0
 }
 
+base_os_prefix() {
+    local prefix=WindowsCross
+    
+    common_consistency_checks "$@"
+    while [[ $# -gt 0 ]]
+    do
+        case "$1" in
+            -N|--native)
+                prefix=$(uname -s)
+                prefix=${prefix,,}  
+                break
+                ;;                
+             *) ;;
+        esac
+        shift
+    done
+    echo "$prefix"
+}
+
 build_prefix() {
     local prefix=debug
     local arch=$(get_target_arch "$@")
-    local base=WindowsCross
+    local base=$(base_os_prefix "$@")
 
     common_consistency_checks "$@"
     while [[ $# -gt 0 ]]
@@ -233,10 +252,6 @@ build_prefix() {
             -n|--nodebug)
                 prefix=release
                 ;;
-            -N|--native)
-                base=$(uname -s)
-                base=${base,,}  
-                ;;                
              *) ;;
         esac
         shift

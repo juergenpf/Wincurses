@@ -1,5 +1,10 @@
 workspace="$(realpath /workspaces/*)"
-NCSCRIPTS="$workspace/Scripts"
+# This is for a planned future extension
+if [ -d "${workspace}/ncbind/Scripts" ]; then
+    export PATH="${workspace}/ncbind/Scripts:$PATH"
+fi
+
+NCSCRIPTS="${workspace}/Scripts"
 if [ -d "$NCSCRIPTS" ]; then
     export PATH="$NCSCRIPTS:$PATH"
     export NCSCRIPTS

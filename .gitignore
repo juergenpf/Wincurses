@@ -11,6 +11,8 @@ inst/
 .prlpath
 # This will be generated.
 .devcontainer/devcontainer.json
+# Reserved for future use.
+ncbind/
 
 # Build results
 NuGetBuild/

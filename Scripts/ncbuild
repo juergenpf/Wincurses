@@ -4,7 +4,6 @@
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/_inc
 
-
 _cfgopts=0 # Count the number of options that affect the configuration
 _nondefault_opts=0 # Count the number of options that differ from the default configuration
 
@@ -346,7 +345,8 @@ do_config() {
         # we enforce PCRE2 usage on Windows build in this devcontainer.            
         cflags="$cflags -I${PCRE2_ROOT}/include -DPCRE2_STATIC -DHAVE_REGEX_H=1 -DHAVE_REGEX_H_FUNCS=1"
         ldflags="$ldflags -L${PCRE2_ROOT}/lib"
-    fi    
+    fi
+    
     rm -rf "$NCBUILD"
     mkdir -p "$NCBUILD"
     _trace "Recreated build directory: ${NCBUILD}"
@@ -365,6 +365,7 @@ do_config() {
     if opt_debug; then
         cflags="$cflags -g"
         opts="$opts \
+            --without-manpages \
             --with-debug \
             --with-progs \
             --with-tests \
