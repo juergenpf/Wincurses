@@ -355,3 +355,12 @@ get_host_bht() {
     echo "$host_bht"
     return 0
 }
+
+avoid_hostrun() {
+    if ! in_container; then
+        if [ "$(uname -s)" = "Linux" ]; then
+            _log "It is recommended to run this script in the devcontainer as it produce the same result there in a controlled environment"
+            exit 0
+        fi
+    fi
+}

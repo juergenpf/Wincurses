@@ -112,6 +112,8 @@ if ! opt_native; then
     in_container || _fail "Not running in devcontainer." 
 fi
 
+avoid_hostrun
+
 addopts=
 ! opt_debug && addopts="$addopts --nodebug"
 opt_dynamic && addopts="$addopts --dynamic"
