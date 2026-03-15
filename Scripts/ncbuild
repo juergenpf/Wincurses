@@ -180,7 +180,7 @@ do_config() {
     fi
 
     if [ $_native -eq 0 ]; then
-        opts="--build=${build_bht} \
+        opts+=" --build=${build_bht} \
             --host=${host_bht} 
             --with-strip-program=${STRIP} \
             --with-build-cc=${build_bht}-gcc \
@@ -201,21 +201,23 @@ do_config() {
         opts+=" --disable-sp-funcs"
     fi
     if [ $_reentrant -ne 0 ]; then
-        opts="$opts --enable-reentrant"
+        opts+=" --enable-reentrant"
     else
-        opts="$opts --disable-reentrant"
+        opts+=" --disable-reentrant"
     fi
     if [ $_widec -ne 0 ]; then
-        opts="$opts --enable-widec"
+        opts+=" --enable-widec"
     else
-        opts="$opts --disable-widec"
+        opts+=" --disable-widec"
     fi
 
     if [ $_native -eq 0 ]; then
-        opts+=" --enable-named-pipes \
+        opts+=" --enable-conpty \
+            --enable-named-pipes \
+            --disable-term-driver \
             --disable-home-terminfo \
             --disable-symlinks \
-            --with-fallbacks=ms-terminal \
+            --with-fallbacks=ms-terminal,xterm-256color,xterm,ansi,vt100 \
             --without-manpages"
         # we enforce PCRE2 usage on Windows build in this devcontainer.            
         cflags="$cflags -I${PCRE2_ROOT}/include -DPCRE2_STATIC -DHAVE_REGEX_H=1 -DHAVE_REGEX_H_FUNCS=1"
