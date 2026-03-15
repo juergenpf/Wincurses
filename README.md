@@ -54,7 +54,9 @@ On MacOS we can not do a bind-mount of the local ssh-agent socket into the conta
 
 with these settings, VS Code on MacOS will handle the minimum required to allow you to access github.
 
-**WARNING** Apple apparently believes, that asking the OS for the name of the timezone is a security relevant thing and you need `sudo` priviledge to do that. Most developers have that on their dev-machines, so depending on your setup be prepared, that `configure` may ask for your password to get permission to enter sudo mode.
+**WARNING:** Apple apparently believes, that asking the OS for the name of the timezone is a security relevant thing and you need `sudo` priviledge to do that. Most developers have that on their dev-machines, so depending on your setup be prepared, that `configure` may ask for your password to get permission to enter sudo mode.
+
+**IMPORTANT HINT:** Please run the configure script each time you sync a new version of this repository, because things may have changed. In most cases, this will not require to rebuild the devcontainer, but even that may be necessary if you sync.
 
 The final "`code .`" will now bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
 
