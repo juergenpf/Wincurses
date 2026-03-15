@@ -83,7 +83,7 @@ fi
 
 avoid_hostrun
 
-if is_default_build; then
+if is_default_build "$@"; then
     _trace "Running with default settings (Windows cross build with widec support, UCRT target, debug build)"
 fi
 

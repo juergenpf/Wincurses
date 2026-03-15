@@ -180,6 +180,7 @@ base_os_prefix() {
 build_prefix() {
     source "${SCRIPTS}/_function_prolog"
     local prefix=debug
+
     local arch=$(get_target_arch "${_args[@]}")
     local base=$(base_os_prefix  "${_args[@]}")
 

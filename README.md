@@ -206,7 +206,7 @@ You may call `ncbuildall` with these options:
 ```bash
   -c, --clean           Clean build and install directories before building
   -N, --native          Build for native execution in Linux or the host environment
-  -r, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds.
+  -t, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds.
   -d, --dynamic         Build with shared libraries (default is static)
   -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
   -n, --nodebug         Build without debug symbols and features
