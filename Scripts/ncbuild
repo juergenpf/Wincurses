@@ -337,7 +337,7 @@ do_config() {
     fi
 
     if ! opt_native; then
-        opts+=" --enable-named-pipes \
+        opts+=" --enable-conpty --disable-term-driver \
             --disable-home-terminfo \
             --disable-symlinks \
             --with-fallbacks=ms-terminal \
