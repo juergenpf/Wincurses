@@ -141,18 +141,36 @@ function GetSuffix {
     return $suffix
 }
 
+function GetExtraSuffix {
+    param(
+        [Switch]$spfuncs,
+        [Switch]$interop
+    )
+    $suffix = ""
+    if ($spfuncs) {
+        $suffix = "${suffix}s"
+    }
+    if ($interop) {
+        $suffix = "${suffix}i"
+    }
+    return $suffix
+}
+
 function RelativeBuildDir {
     param(
         [Switch]$nodebug,
         [Switch]$reentrant,
+        [Switch]$interop,
+        [Switch]$spfuncs,
         [Switch]$ascii,
         [Switch]$x86,
         [Switch]$woa,
         [Switch]$msvcrt
     )
     $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
+    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop
     $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
-    return (Join-Path (Join-Path $pre "nc${suffix}") (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
+    return (Join-Path (Join-Path $pre "nc${suffix}${extraSuffix}") (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
 }
 
 
@@ -160,26 +178,31 @@ function RelativeInstallBase {
     param(
         [Switch]$nodebug,
         [Switch]$reentrant,
+        [Switch]$interop,
+        [Switch]$spfuncs,
         [Switch]$ascii,
         [Switch]$x86,
         [Switch]$woa,
         [Switch]$msvcrt
     )
     $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
+    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop
     $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
-    return (Join-Path $pre "nc${suffix}")
+    return (Join-Path $pre "nc${suffix}${extraSuffix}")
 }
 
 function RelativeInstallDir {
     param(
         [Switch]$nodebug,
         [Switch]$reentrant,
+        [Switch]$interop,
+        [Switch]$spfuncs,
         [Switch]$ascii,
         [Switch]$x86,
         [Switch]$woa,
         [Switch]$msvcrt
     )
-    return (Join-Path (RelativeInstallBase -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
+    return (Join-Path (RelativeInstallBase -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
 }   
 
 function Push-WincursesTestLocation {
@@ -192,19 +215,22 @@ function Push-WincursesTestLocation {
         [Switch]$woa,
         [Switch]$dynamic,
         [Switch]$libSeparate,
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
+        [Switch]$spfuncs,
+        [Switch]$interop
+
     )
 
-    if (-not (ConsistencyCheck -x86:$x86 -woa:$woa -msvcrt:$msvcrt)) {
+    if (-not (ConsistencyCheck -x86:$x86 -woa:$woa -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop)) {
         Write-Error "Inconsistent configuration"
         return
     }
 
     $Env:WNCDEBUG=""
     
-    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt))
+    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop))
     if (Test-Path -path $loc  -PathType Container) {
-        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt))
+        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop))
         [string]$lib = (Join-Path $loc "lib")
         [string]$bin = (Join-Path $inst "bin")
         if ($dynamic) {
