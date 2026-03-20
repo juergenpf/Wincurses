@@ -101,6 +101,7 @@ is_default_build() {
 
     [ $_widec -eq 0 ]       && _nondefault_opts=$(expr $_nondefault_opts + 1)
     [ $_reentrant -ne 0 ]   && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    [ $_termdriver -ne 0 ]  && _nondefault_opts=$(expr $_nondefault_opts + 1)
     [ $_spfuncs -ne 0 ]     && _nondefault_opts=$(expr $_nondefault_opts + 1)
     [ $_native -ne 0 ]      && _nondefault_opts=$(expr $_nondefault_opts + 1)
     [ $_libseparate -ne 0 ] && _nondefault_opts=$(expr $_nondefault_opts + 1)
@@ -116,13 +117,12 @@ is_default_build() {
 common_consistency_checks() {
     source "${SCRIPTS}/_function_prolog"
 
-    [ $_spfuncs -ne 0 ] && [ $_native -eq 0 ] && _fail "sp-funcs support is only available for native builds."
-    [ $_interop -ne 0 ]  && [ $_native -eq 0 ] &&  _fail "Please specify interop only on native builds. On Windows it is implicit."
     [ $_ucrt -eq 0 ]     && [ $_native -ne 0 ] && _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
     [ $_x86 -ne 0 -o $_woa -ne 0 ] && [ $_native -ne 0 ] && _fail "--x86 or --woa are specific for Windows cross builds and cannot be used for native builds." 
     [ $_x86 -ne 0 ] && [ $_woa -ne 0 ] &&  _fail "x86 and WOA build options are mutually exclusive."
     [ $_x86 -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "x86 builds for UCRT are not supported."
     [ $_woa -ne 0 ] && [ $_ucrt -eq 0 ] && _fail "--woa and --msvcrt are not compatible. Windows on ARM implies ucrt"
+    [ $_native -eq 0 ] && [ $_termdriver -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "Builds fpr legacy Windows tith term-driver support require --msvcrt as C runtime library"
     return 0   
 }
 
