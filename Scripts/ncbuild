@@ -227,6 +227,9 @@ do_config() {
         else
             opts+=" --enable-conpty"
         fi
+        if [ $_ucrt -eq 0 ]; then
+            opts+=" --with-extra-suffix=-msvcrt"
+        fi
         opts+=" \
             --enable-named-pipes \
             --disable-home-terminfo \

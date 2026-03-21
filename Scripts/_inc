@@ -122,7 +122,9 @@ common_consistency_checks() {
     [ $_x86 -ne 0 ] && [ $_woa -ne 0 ] &&  _fail "x86 and WOA build options are mutually exclusive."
     [ $_x86 -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "x86 builds for UCRT are not supported."
     [ $_woa -ne 0 ] && [ $_ucrt -eq 0 ] && _fail "--woa and --msvcrt are not compatible. Windows on ARM implies ucrt"
-    [ $_native -eq 0 ] && [ $_termdriver -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "Builds fpr legacy Windows tith term-driver support require --msvcrt as C runtime library"
+    [ $_native -eq 0 ] && [ $_termdriver -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "Builds for legacy Windows with term-driver support require --msvcrt as C runtime library"
+    [ $_termdriver -ne 0 ] && [ $_libseparate -ne 0 ] && _fail "Term-driver builds are not supported with --libseparate"
+    [ $_termdriver -ne 0 ] && [ $_spfuncs -eq 0 ] && _fail "Term-driver builds require --spfuncs"
     return 0   
 }
 
@@ -136,7 +138,7 @@ get_config_prefix() {
     [ $_native -ne 0 ] && prefix="${NATIVE_PREFIX}" 
 
     if [ $_x86 -ne 0 ]; then
-        if [ $_msvcrt -ne 0 ]; then
+        if [ $_ucrt -eq 0 ]; then
             prefix="$MINGW32_PREFIX"
         else
             _fail "--x86 requires --msvcrt"

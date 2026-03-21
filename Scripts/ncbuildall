@@ -45,7 +45,29 @@ opt_clean() {
 
 doit() {
     ${SCRIPTS}/ncbuild $@
-    [ $? -ne 0 ] && _fail "Build failed with options: $@"
+    [ $? -ne 0 ] && _log "Build failed with options: $@"
+}
+
+doall() {
+    doit "$@"
+    doit --ascii "$@"
+    doit --interop "$@"
+    doit --spfuncs "$@"
+    doit --ascii --interop "$@"
+    doit --ascii --spfuncs "$@"
+    doit --interop --spfuncs "$@"
+    doit --ascii --interop --spfuncs "$@"
+    if opt_reentrant; then
+        _trace "We also do all the combinations with --reentrant, which results in 16 builds total."
+        doit "$@" --reentrant
+        doit "$@" --ascii --reentrant
+        doit "$@" --ascii --reentrant --interop
+        doit "$@" --reentrant --interop
+        doit "$@" --reentrant --spfuncs
+        doit "$@" --ascii --reentrant --spfuncs
+        doit "$@" --reentrant --interop --spfuncs
+        doit "$@" --ascii --reentrant --interop --spfuncs
+    fi
 }
 
 get_options() {
@@ -122,36 +144,11 @@ opt_clean   && addopts="$addopts --clean"
 opt_verbose && addopts="$addopts --verbose"
 
 if opt_native; then
-    addopts="$addopts --native"
-    doit $addopts
-    doit $addopts --ascii
-    doit $addopts --interop
-    doit $addopts --spfuncs
-    doit $addopts --ascii --interop
-    doit $addopts --ascii --spfuncs
-    doit $addopts --interop --spfuncs
-    doit $addopts --ascii --interop --spfuncs
-    if opt_reentrant; then
-        _trace "We also do all the combinations with --reentrant, which results in 16 builds total."
-        doit $addopts --reentrant
-        doit $addopts --ascii --reentrant
-        doit $addopts --ascii --reentrant --interop
-        doit $addopts --reentrant --interop
-        doit $addopts --reentrant --spfuncs
-        doit $addopts --ascii --reentrant --spfuncs
-        doit $addopts --reentrant --interop --spfuncs
-        doit $addopts --ascii --reentrant --interop --spfuncs
-    fi
+    doall $addopts --native
 else
     for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
     do
-        doit $addopts $p
-        doit $addopts $p --ascii
-        if opt_reentrant; then
-            _trace "We also do all the combinations with --reentrant, which results in 16 builds total."
-            doit $addopts $p --reentrant
-            doit $addopts $p --ascii --reentrant
-        fi
+        doall $addopts $p
     done
 fi
 exit 0
