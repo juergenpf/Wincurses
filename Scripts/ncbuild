@@ -222,16 +222,13 @@ do_config() {
 
     if [ $_native -eq 0 ]; then
         if [ $_termdriver -ne 0 ]; then
-            cflags="$cflags -DUSE_WIN32CON_DRIVER"
+            cflags="$cflags -DUSE_WIN32CON_DRIVER -DSIMULATE_CONPTY_UNSUPPORTED=1"
             opts+=" --disable-conpty"
-        else
-            opts+=" --enable-conpty"
         fi
         if [ $_ucrt -eq 0 ]; then
             opts+=" --with-extra-suffix=-msvcrt"
         fi
-        opts+=" \
-            --enable-named-pipes \
+        opts+=" --enable-named-pipes \
             --disable-home-terminfo \
             --disable-symlinks \
             --with-fallbacks=ms-terminal,xterm-256color,xterm,ansi,vt100 \
@@ -240,8 +237,7 @@ do_config() {
             cflags="$cflags -DJPF=0 -I${PCRE2_ROOT}/include -DPCRE2_STATIC -DHAVE_REGEX_H=1 -DHAVE_REGEX_H_FUNCS=1"
             ldflags="$ldflags -L${PCRE2_ROOT}/lib"
     else
-        opts+=" \ 
-            --enable-home-terminfo \
+        opts+=" --enable-home-terminfo \
             --enable-symlinks \
             --with-fallbacks=linux,screen-256color,screen,xterm-256color,xterm,vt100 \
             --without-manpages"
@@ -308,7 +304,7 @@ do_config() {
             ldflags="$ldflags -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
         fi
     fi
-
+    opts=$(echo "$opts" | xargs)
     _trace "Configuration options: ${opts}"
     if [ "$SCRIPTNAME" = "ncbuildinfo" ]; then
         echo "configure_options=\"${opts}\""
