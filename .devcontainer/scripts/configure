@@ -66,7 +66,6 @@ if [ -f /.dockerenv ]; then
     exit 1
 fi
 
-SSHMOUNT=
 MSYS2PATH=
 PRLPATH=
 DISTRO=
@@ -102,7 +101,6 @@ case "$(uname -s)" in
             echo "WIN_REPO_PATH='$(wslpath -w $WORKSPACE)'" >> "$T"
             wsl_profile_helper
         fi
-        SSHMOUNT='"mounts": [ "source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind" ], "containerEnv": {"SSH_AUTH_SOCK": "/ssh-agent"},'
         LOCALE=$(locale | grep -E '^(LC_ALL|LANG)=' | head -n1 | cut -d= -f2)
         [[ "$LOCALE" == *.UTF-8 ]] || LOCALE="${LOCALE}.UTF-8"
         TIMEZONE=$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')
@@ -118,7 +116,6 @@ esac
 
 if [ -f "${SCRIPT}/../devcontainer.json.in" ]; then
     cat "${SCRIPT}/../devcontainer.json.in" | \
-        sed "s|@SSHMOUNT@|$SSHMOUNT|g" | \
         sed "s|@LOCALE@|$LOCALE|g" | \
         sed "s|@DISTRO@|$DISTRO|g" | \
         sed "s|@REPOPATH@|$WORKSPACE|g" | \

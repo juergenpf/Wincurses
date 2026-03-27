@@ -14,8 +14,6 @@
 
   "remoteUser": "vscode",
   "updateRemoteUserUID": true,
-
-  @SSHMOUNT@
   
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 

@@ -88,7 +88,7 @@ ENV LC_ALL=$LOCALE
 # llvm-mingw (Used for ARM64 builds only)
 # --------------------------------------------------
 WORKDIR /opt
-ENV LLVM_MINGW_VERSION=20260311
+ENV LLVM_MINGW_VERSION=20260324
 RUN curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/llvm-mingw-${LLVM_MINGW_VERSION}-ucrt-ubuntu-22.04-$(uname -m).tar.xz \
     -o llvm-mingw.tar.xz && \
     tar xf llvm-mingw.tar.xz && \

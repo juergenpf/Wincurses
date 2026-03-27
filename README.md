@@ -46,13 +46,13 @@ $ cd ..
 $ ./.devcontainer/scripts/configure
 $ code .
 ```
-The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. And there are differences between Linux and MacOS how the ssh agent-forwarding needs to be configured for the devcontainer, so you can use git operations against github from within the devcontainer with your ssh key.
+The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. 
 
-On MacOS we can not do a bind-mount of the local ssh-agent socket into the container. There you must configure VS Code to handle ssh agent forwarding for you. Open the command palette and type "`Remote.SSH`". You should see "`Remote-SSH:Settings`" beeing offered in the drop-down selection. Open that settings dialog and set two options to these values:
+In order to forward the SSH auth from your host into the `VS Code` container, you must configure `VS Code` to handle ssh agent forwarding for you. Open the command palette and type "`Remote.SSH`". You should see "`Remote-SSH:Settings`" beeing offered in the drop-down selection. Open that settings dialog and set two options to these values:
 - remote.SSH.EnableAgentForwarding: true
 - remote.SSH.useLocalServer: false
 
-with these settings, VS Code on MacOS will handle the minimum required to allow you to access github.
+with these settings, `VS Code` will handle the minimum required to allow you to access github.
 
 **WARNING:** Apple apparently believes, that asking the OS for the name of the timezone is a security relevant thing and you need `sudo` priviledge to do that. Most developers have that on their dev-machines, so depending on your setup be prepared, that `configure` may ask for your password to get permission to enter sudo mode.
 
