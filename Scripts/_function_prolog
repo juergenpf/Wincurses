@@ -5,7 +5,7 @@
     local _args=("$@")
     local _widec=1
     local _reentrant=0
-    local _termdriver=0
+    local _winconsole=0
     local _interop=0
     local _spfuncs=0
     local _native=0
@@ -27,8 +27,8 @@
             -t|--reentrant)
 	            _reentrant=1
 	            ;;
-            -T|--termdriver)
-                _termdriver=1
+            -W|--winconsole)
+                _winconsole=1
                 ;;    
             -i|--interop)
                 _interop=1
