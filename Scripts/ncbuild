@@ -13,7 +13,7 @@ get_options() {
 	            ;;
             -t|--reentrant)
 	            ;;
-            -T|--termdriver)
+            -W|--winconsole)
                 ;;    
             -i|--interop)
                 ;;
@@ -44,7 +44,7 @@ get_options() {
                 echo "Options:"
                 echo "  -a, --ascii           Build ASCII version (disable wide character support)"
                 echo "  -t, --reentrant       Build reentrant version"
-                echo "  -T, --termdriver      Build with term-driver support (intended for legacy Windows support)"
+                echo "  -W, --winconsole      Build with winconsole support (intended for Windows older than Windows 10 1809)"
                 echo "  -i, --interop         Build with interop features enabled"
                 echo "  -s, --spfuncs         Build with sp-funcs support."
                 echo "  -N, --native          Build for native execution in Linux or the host environment"
@@ -180,7 +180,7 @@ do_config() {
     if is_default_build "${_args[@]}"; then
         _interop=1
         _spfuncs=0
-        _termdriver=0
+        _winconsole=0
     fi
 
     if [ $_native -eq 0 ]; then
@@ -194,10 +194,10 @@ do_config() {
     if [ $_dynamic -eq 0 ]; then
         dynopts="--without-shared"
     fi
-    if [ $_termdriver -ne 0 ]; then
-        opts+=" --enable-term-driver"
+    if [ $_winconsole -ne 0 ]; then
+        opts+=" --enable-win-console"
     else
-        opts+=" --disable-term-driver"
+        opts+=" --disable-win-console"
     fi
     if [ $_interop -ne 0 ]; then
         opts+=" --enable-interop"
@@ -221,14 +221,13 @@ do_config() {
     fi
 
     if [ $_native -eq 0 ]; then
-        if [ $_termdriver -ne 0 ]; then
-            cflags="$cflags -DUSE_WIN32CON_DRIVER -DSIMULATE_CONPTY_UNSUPPORTED=1"
-            opts+=" --disable-conpty"
+        if [ $_winconsole -ne 0 ]; then
+            cflags="$cflags"
         fi
         if [ $_ucrt -eq 0 ]; then
             opts+=" --with-extra-suffix=-msvcrt"
         fi
-        opts+=" --enable-named-pipes \
+        opts+=" --enable-conpty \
             --disable-home-terminfo \
             --disable-symlinks \
             --with-fallbacks=ms-terminal,xterm-256color,xterm,ansi,vt100 \
