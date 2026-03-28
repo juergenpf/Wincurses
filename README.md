@@ -20,7 +20,7 @@ The reason why I use my own snapshot as a submodule is that I'm actually develop
 
 Now even Windows 10 is no longer a supported platform, and me feeling uncomfortable to be the person behind the current less favourable mixed implementation, I decided to come up with a rewrite of the Windows Port which will completely separate the legacy implementation from the modern Console-Pseudo-Terminal (CONPTY) implementation, and try to stay as close as possible in that I/O model and virtual pseudo-terminal abstraction. For me, this was a big move, as I retired in 2019 and did little coding on larger projects since then, more focusing on trying out stuff I never touched before intensively in my professional life (like coding in Haskell or diving into the RISC-V architecture).
 
-This development happens on the branch `conpty` and `mergeconpty` of the ncurses git submodule. The `conpty` branch is build on the idea, to completely drop the legacy support, while `mergeconpty` is keeping the legacy support, but now completely separated from the ConPTY implementation.  So, if you want to build ncurses for Windows and follow the current development, you should use these branches. I merge them with the weekly snapshots, and the merge points are tagged with tags named conptyYYYYMMDD or mergeconptyYYYYMMDD (where YYYYMMDD is the time of the patch release of the official ncurses repository). If the merge goes well, I will drop the `conpty` branch.
+This development happens on the branch `mergeconpty` of the ncurses git submodule, `mergeconpty` is keeping the legacy support, but now completely separated from the ConPTY implementation.  So, if you want to build ncurses for Windows and follow the current development, you should use this branch. I merge it with the weekly snapshot, and the merge points is tagged with a tag named mergeconptyYYYYMMDD (where YYYYMMDD is the time of the patch release of the official ncurses repository).
 
 The main reason I want to do development on a Linux platform using cross-compilers is simply because the POSIX emulation layer MSYS2 on Windows is so painfully slow when it comes to File I/O and process creation. That's ok if you do occasional builds, but development with frequent rebuilds... I didn't like the experience.
 
@@ -110,7 +110,7 @@ you'll get a static debug build of a wide ncurses for x86_64 targeting the UCRT.
 ~~~
   -a, --ascii           Build ASCII version (disable wide character support)
   -t, --reentrant       Build reentrant version
-  -T, --termdriver      Build with term-driver support (intended for legacy Windows support)
+  -W, --winconsole      Build with rhe old Console API (for Windows before Win10 1809)
   -i, --interop         Build with interop features enabled. 
   -s, --spfuncs         Build with sp-funcs support.
   -N, --native          Build for native execution in Linux (no cross-compilation)
@@ -130,8 +130,6 @@ you'll get a static debug build of a wide ncurses for x86_64 targeting the UCRT.
 ```
 would do a static debug build of a non-wide ncurses for the i686 architecture targeting MSVCRT.
 
-The options `--spfuncs` and `--interop` are only allowed when `--native` was specified. For Windows cross-builds we have hardcoded: no sp-funcs and interop enabled.
-
 #### The options in Detail
 
 ##### -a, --ascii
@@ -140,11 +138,17 @@ The default for our build system is to do builds that have the ncurses configura
 ##### -t, --reentrant
 The default is to build libraries without reentrancy support (`--disable-reentrant`). With this option, you enable `--enable-reentrant`.
 
-##### -s, --spfuncs
-Only relevant for native builds. It adds an additional set of functions to the ncurses API which optimise to use multiple terminals in a single application.
+##### -W, --winconsole
+By default, we **always** use the `ncurses` configure option --enable-conpty to make sure, we support the modern pseudo-console architecture if available. But if your code needs to run on Windows version before Windows 10 Version 1809 (released October 2018), you can use this option in addition. The library is built in a way, that it detects whether or not ConPTY is supported it uses it if available. The classical console API will only be used, if ConPTY is not available.
 
 ##### -i, --interop
 Is per default enabled for Windows cross-builds. It is relevant in the forms library to ease the definition of field types when calling these routines from other languages than C, which might have problems using C constructs like va_lists.
+
+##### -s, --spfuncs
+Only relevant for native builds. It adds an additional set of functions to the ncurses API which optimise to use multiple terminals in a single application.
+
+##### -N, --native
+You can use this script to build ncurses also for the host platform. If you run this inside the container, you build for Debian SID. The script with this option can also by run outside the container and will then build for the platform you run the devcontainer on, e.g. this then could be Darwin. Please note, that some of the options, e.g. the Windows specific ones, will only be supported in the container in non-native mode.
 
 ##### -m, --msvcrt
 The default is to build for UCRT. With this option, you trigger a build for MSVCRT. This is actually only indirectly a ncurses configuration option, as it mainly selects the toolchain to be used for the build. This will be reflected in the `--host` configuration option of ncurses.
@@ -156,7 +160,7 @@ The default is to build for x86_64 Intel 64-bit architecture. With this option, 
 Like --woa, this selects a different architecture for the build, this time an i686 Intel 32-bit build. In this case, you must also specify --msvcrt, as x86 is considered legacy and only supports the old C runtime.
 
 ##### -l, --libseparate
-The default is that the terminfo functionality is linked into the main ncurses library (statically and dynamically), corresponding to the ncurses configure option `--without-termlib`. With this option, you trigger a `--with-termlib` option, which will create a separate library `tinfo`. Please note that this option currently does not work.
+The default is that the terminfo functionality is linked into the main ncurses library (statically and dynamically), corresponding to the ncurses configure option `--without-termlib`. With this option, you trigger a `--with-termlib` option, which will create a separate library `tinfo`. Please note that this option currently does not work when you specify --winconsole.
 
 ##### -d, --dynamic
 By default, we build static libraries. With this option, you trigger the build of DLLs.
