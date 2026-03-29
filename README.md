@@ -111,6 +111,7 @@ you'll get a static debug build of a wide ncurses for x86_64 targeting the UCRT.
   -a, --ascii           Build ASCII version (disable wide character support)
   -t, --reentrant       Build reentrant version
   -W, --winconsole      Build with rhe old Console API (for Windows before Win10 1809)
+  -P, --noconpty        Build without ConPTY support (intended for Windows older than Windows 10 1809) 
   -i, --interop         Build with interop features enabled. 
   -s, --spfuncs         Build with sp-funcs support.
   -N, --native          Build for native execution in Linux (no cross-compilation)
@@ -141,6 +142,9 @@ The default is to build libraries without reentrancy support (`--disable-reentra
 ##### -W, --winconsole
 By default, we **always** use the `ncurses` configure option --enable-conpty to make sure, we support the modern pseudo-console architecture if available. But if your code needs to run on Windows version before Windows 10 Version 1809 (released October 2018), you can use this option in addition. The library is built in a way, that it detects whether or not ConPTY is supported it uses it if available. The classical console API will only be used, if ConPTY is not available.
 
+##### -P, --noconpty
+This option disables ConPTY completely and thecurses library will only be build to support the Console API fpr older Windows versions. This is definitively **NOT RECOMMENDED** and should only be used, if you explicitly target an environment with only older versions of Windows.
+
 ##### -i, --interop
 Is per default enabled for Windows cross-builds. It is relevant in the forms library to ease the definition of field types when calling these routines from other languages than C, which might have problems using C constructs like va_lists.
 
@@ -160,7 +164,7 @@ The default is to build for x86_64 Intel 64-bit architecture. With this option, 
 Like --woa, this selects a different architecture for the build, this time an i686 Intel 32-bit build. In this case, you must also specify --msvcrt, as x86 is considered legacy and only supports the old C runtime.
 
 ##### -l, --libseparate
-The default is that the terminfo functionality is linked into the main ncurses library (statically and dynamically), corresponding to the ncurses configure option `--without-termlib`. With this option, you trigger a `--with-termlib` option, which will create a separate library `tinfo`. Please note that this option currently does not work when you specify --winconsole.
+The default is that the terminfo functionality is linked into the main ncurses library (statically and dynamically), corresponding to the ncurses configure option `--without-termlib`. With this option, you trigger a `--with-termlib` option, which will create a separate library `tinfo`.
 
 ##### -d, --dynamic
 By default, we build static libraries. With this option, you trigger the build of DLLs.
@@ -209,15 +213,17 @@ If you run it for a native build, we will run builds for all possible combintati
 This results in 8 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
 You may call `ncbuildall` with these options:
 ```bash
-  -c, --clean           Clean build and install directories before building
-  -N, --native          Build for native execution in Linux or the host environment
-  -t, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds.
+-c, --clean           Clean build and install directories before building
+  -N, --native          Build for native execution in Linux (no cross-compilation)
+  -P, --noconpty        Disable ConPTY support
+  -W, --winconsole      Enable Windows console support
+  -t, --reentrant       Build also all combinations with --reentrant, doubles the amount of builds.
   -d, --dynamic         Build with shared libraries (default is static)
   -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
   -n, --nodebug         Build without debug symbols and features
   -v, --verbose         Enable verbose output
   -h, --help            Show this help message and exit
-```
+  ```
 ### ncbuildinfo
 This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
 
