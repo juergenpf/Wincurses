@@ -14,6 +14,7 @@ _opt_libseparate=0
 _opt_native=0
 _opt_clean=0
 _opt_reentrant=0
+_opt_ucrt=1
 
 opt_debug() {
     [ $_opt_debug -ne 0 ] && return 0
@@ -47,6 +48,11 @@ opt_conpty() {
 
 opt_winconsole() {
     [ $_opt_winconsole -ne 0 ] && return 0
+    return 1
+}
+
+opt_ucrt() {
+    [ $_opt_ucrt -ne 0 ] && return 0
     return 1
 }
 
@@ -93,6 +99,9 @@ get_options() {
             -N|--native)
                 _opt_native=1
                 ;;
+            -m|--msvcrt)
+                _opt_ucrt=0
+                ;;
             -P|--noconpty)
                 _opt_conpty=0
                 ;;
@@ -119,6 +128,7 @@ get_options() {
                 echo "Options:"
                 echo "  -c, --clean           Clean build and install directories before building"
                 echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
+                echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)"
                 echo "  -P, --noconpty        Disable ConPTY support"
                 echo "  -W, --winconsole      Enable Windows console support"
                 echo "  -t, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds."
@@ -158,6 +168,7 @@ avoid_hostrun
 
 addopts=
 ! opt_debug     && addopts+=" --nodebug"
+! opt_ucrt      && addopts+=" --msvcrt"
 ! opt_conpty    && addopts+=" --noconpty"
 opt_winconsole  && addopts+=" --winconsole"
 opt_dynamic     && addopts+=" --dynamic"

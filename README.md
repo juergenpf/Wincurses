@@ -215,6 +215,7 @@ You may call `ncbuildall` with these options:
 ```bash
 -c, --clean           Clean build and install directories before building
   -N, --native          Build for native execution in Linux (no cross-compilation)
+  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only) 
   -P, --noconpty        Disable ConPTY support
   -W, --winconsole      Enable Windows console support
   -t, --reentrant       Build also all combinations with --reentrant, doubles the amount of builds.
