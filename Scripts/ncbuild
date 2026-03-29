@@ -15,6 +15,8 @@ get_options() {
 	            ;;
             -W|--winconsole)
                 ;;    
+            -P|--noconpty)
+                ;;
             -i|--interop)
                 ;;
             -s|--spfuncs)
@@ -45,6 +47,7 @@ get_options() {
                 echo "  -a, --ascii           Build ASCII version (disable wide character support)"
                 echo "  -t, --reentrant       Build reentrant version"
                 echo "  -W, --winconsole      Build with winconsole support (intended for Windows older than Windows 10 1809)"
+                echo "  -P, --noconpty        Build without ConPTY support (intended for Windows older than Windows 10 1809)"
                 echo "  -i, --interop         Build with interop features enabled"
                 echo "  -s, --spfuncs         Build with sp-funcs support."
                 echo "  -N, --native          Build for native execution in Linux or the host environment"
@@ -186,13 +189,16 @@ do_config() {
     if [ $_native -eq 0 ]; then
         opts+=" --build=${build_bht} \
             --host=${host_bht} 
-            --with-strip-program=${STRIP} \
-            --with-build-cc=${build_bht}-gcc \
-            --with-build-cpp=${build_bht}-cpp"    
+            --with-strip-program=${STRIP}"
     fi
 
     if [ $_dynamic -eq 0 ]; then
         dynopts="--without-shared"
+    fi
+    if [ $_conpty -eq 0 ]; then
+        opts+=" --disable-conpty"
+    else
+        opts+=" --enable-conpty"
     fi
     if [ $_winconsole -ne 0 ]; then
         opts+=" --enable-win-console"
@@ -227,8 +233,7 @@ do_config() {
         if [ $_ucrt -eq 0 ]; then
             opts+=" --with-extra-suffix=-msvcrt"
         fi
-        opts+=" --enable-conpty \
-            --disable-home-terminfo \
+        opts+=" --disable-home-terminfo \
             --disable-symlinks \
             --with-fallbacks=ms-terminal,xterm-256color,xterm,ansi,vt100 \
             --without-manpages"

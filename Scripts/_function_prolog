@@ -6,6 +6,7 @@
     local _widec=1
     local _reentrant=0
     local _winconsole=0
+    local _conpty=1
     local _interop=0
     local _spfuncs=0
     local _native=0
@@ -29,7 +30,10 @@
 	            ;;
             -W|--winconsole)
                 _winconsole=1
-                ;;    
+                ;;
+            -P|--noconpty)
+                _conpty=0
+                ;;
             -i|--interop)
                 _interop=1
                 ;;
