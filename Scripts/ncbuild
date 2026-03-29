@@ -236,10 +236,16 @@ do_config() {
             cflags="$cflags -DJPF=0 -I${PCRE2_ROOT}/include -DPCRE2_STATIC -DHAVE_REGEX_H=1 -DHAVE_REGEX_H_FUNCS=1"
             ldflags="$ldflags -L${PCRE2_ROOT}/lib"
     else
-        opts+=" --enable-home-terminfo \
-            --enable-symlinks \
-            --with-fallbacks=linux,screen-256color,screen,xterm-256color,xterm,vt100 \
-            --without-manpages"
+	if is_native_darwin; then
+            opts+=" --enable-home-terminfo \
+                --enable-symlinks \
+                --without-manpages"
+	else
+            opts+=" --enable-home-terminfo \
+                --enable-symlinks \
+                --with-fallbacks=linux,screen-256color,screen,xterm-256color,xterm,vt100 \
+                --without-manpages"
+	fi
     fi
     
     rm -rf "$blddir"
