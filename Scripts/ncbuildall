@@ -15,6 +15,9 @@ _opt_native=0
 _opt_clean=0
 _opt_reentrant=0
 _opt_ucrt=1
+_opt_x86=0
+_opt_woa=0
+
 
 opt_debug() {
     [ $_opt_debug -ne 0 ] && return 0
@@ -56,6 +59,16 @@ opt_ucrt() {
     return 1
 }
 
+opt_x86() {
+    [ $_opt_x86 -ne 0 ] && return 0
+    return 1
+}
+
+opt_woa() {
+    [ $_opt_woa -ne 0 ] && return 0
+    return 1
+}
+
 opt_clean() {
     [ $_opt_clean -ne 0 ] && return 0
     return 1
@@ -63,7 +76,7 @@ opt_clean() {
 
 doit() {
     ${SCRIPTS}/ncbuild $@
-    [ $? -ne 0 ] && _log "Build failed with options: $@"
+    [ $? -ne 0 ] && _fail "Build failed with options: $@"
 }
 
 doall() {
@@ -76,7 +89,7 @@ doall() {
     doit --interop --spfuncs "$@"
     doit --ascii --interop --spfuncs "$@"
     if opt_reentrant; then
-        _trace "We also do all the combinations with --reentrant, which results in 16 builds total."
+        _trace "We also do all the combinations with --reentrant."
         doit "$@" --reentrant
         doit "$@" --ascii --reentrant
         doit "$@" --ascii --reentrant --interop
@@ -101,6 +114,12 @@ get_options() {
                 ;;
             -m|--msvcrt)
                 _opt_ucrt=0
+                ;;
+            -w|--woa)
+                _opt_woa=1
+                ;;
+            -x|--x86)
+                _opt_x86=1
                 ;;
             -P|--noconpty)
                 _opt_conpty=0
@@ -129,6 +148,8 @@ get_options() {
                 echo "  -c, --clean           Clean build and install directories before building"
                 echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
                 echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)"
+                echo "  -w, --woa             Build for Windows on ARM (WoA)"
+                echo "  -x, --x86             Build for x86 (32-bit)"
                 echo "  -P, --noconpty        Disable ConPTY support"
                 echo "  -W, --winconsole      Enable Windows console support"
                 echo "  -t, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds."
@@ -169,19 +190,16 @@ avoid_hostrun
 addopts=
 ! opt_debug     && addopts+=" --nodebug"
 ! opt_ucrt      && addopts+=" --msvcrt"
+opt_x86         && addopts+=" --x86"
+opt_woa         && addopts+=" --woa"
 ! opt_conpty    && addopts+=" --noconpty"
 opt_winconsole  && addopts+=" --winconsole"
 opt_dynamic     && addopts+=" --dynamic"
 opt_libseparate && addopts+=" --libseparate" 
 opt_clean       && addopts+=" --clean"
 opt_verbose     && addopts+=" --verbose"
+opt_native      && addopts+=" --native"
 
-if opt_native; then
-    doall $addopts --native
-else
-    for p in "" "--msvcrt" "--x86 --msvcrt" "--woa"
-    do
-        doall $addopts $p
-    done
-fi
+doall $addopts
+
 exit 0

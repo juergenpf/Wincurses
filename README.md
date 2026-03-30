@@ -199,11 +199,7 @@ brew install gnu-getopt
 `ncnuke` will completely remove the top level directories `build` and ìnst` and v´create new ones, which are empty. Every subsequent build will start fresh. We assume this to software for adults, so no questions like "are you sure?" will be asked. We assume, you know what you are doing.
 
 ### ncbuildall
-`ncbuildall` is a batch command that builds all possible combinations of certain build options in one command. If you run it for a Windows cross-build, Ut will run the build for four different environments:
-- x86_64 UCRT
-- x86_64 MSVCRT
-- x86 MSVCRT
-- woa UCRT (Windows on ARM)
+`ncbuildall` is a batch command that builds all possible combinations of certain build options in one command. 
 In each of these four environments, it will build wide and non-wide builds, so we have 8 builds. If you use the --reentrant option, we add reentrancy to all the combinations, which will result in 16 total builds.
 
 If you run it for a native build, we will run builds for all possible combintations of
@@ -213,18 +209,21 @@ If you run it for a native build, we will run builds for all possible combintati
 This results in 8 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
 You may call `ncbuildall` with these options:
 ```bash
--c, --clean           Clean build and install directories before building
+  -c, --clean           Clean build and install directories before building
   -N, --native          Build for native execution in Linux (no cross-compilation)
-  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only) 
+  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)
+  -w, --woa             Build for Windows on ARM (WoA)
+  -x, --x86             Build for x86 (32-bit)
   -P, --noconpty        Disable ConPTY support
   -W, --winconsole      Enable Windows console support
-  -t, --reentrant       Build also all combinations with --reentrant, doubles the amount of builds.
+  -t, --reentrant       Build also all combinations possible with --reentrant.
   -d, --dynamic         Build with shared libraries (default is static)
   -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
   -n, --nodebug         Build without debug symbols and features
   -v, --verbose         Enable verbose output
   -h, --help            Show this help message and exit
   ```
+
 ### ncbuildinfo
 This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
 

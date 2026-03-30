@@ -125,7 +125,7 @@ common_consistency_checks() {
     [ $_woa -ne 0 ] && [ $_ucrt -eq 0 ] && _fail "--woa and --msvcrt are not compatible. Windows on ARM implies ucrt"
     # [ $_native -eq 0 ] && [ $_winconsole -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "Builds for legacy Windows with term-driver support require --msvcrt as C runtime library"
     # [ $_winconsole -ne 0 ] && [ $_libseparate -ne 0 ] && _fail "--winconsole builds are not supported with --libseparate"
-    [ $_winconsole -ne 0 ] && [ $_spfuncs -eq 0 ] && _fail "Term-driver builds require --spfuncs"
+    # [ $_winconsole -ne 0 ] && [ $_spfuncs -eq 0 ] && _fail "Term-driver builds require --spfuncs"
     [ $_native -eq 0 ] && [ $_conpty -eq 0 ] && [ $_winconsole -eq 0 ] && _fail "Cross builds must use ConPTY or Windows Console API"
     return 0   
 }
