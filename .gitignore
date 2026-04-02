@@ -7,6 +7,7 @@
 *.userosscache
 *.sln.docstates
 inst/
+logs/
 .wslpath
 .prlpath
 # This will be generated.
