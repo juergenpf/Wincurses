@@ -39,6 +39,9 @@ get_options() {
             -v|--verbose)
                 _opt_verbose=1
                 ;;
+	    --log)
+		shift
+		;;
             -d|--dynamic)
                 ;;
             -h|--help)
@@ -317,6 +320,7 @@ do_config() {
     opts=$(echo "$opts" | xargs)
     _trace "Configuration options: ${opts}"
     if [ "$SCRIPTNAME" = "ncbuildinfo" ]; then
+	_log "Info for build:"
         echo "configure_options=\"${opts}\""
         echo "cflags=\"${cflags}\""
         echo "ldflags=\"${ldflags}\""

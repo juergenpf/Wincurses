@@ -18,16 +18,17 @@
     local _x86=0
     local _dynamic=0
     local _verbose=0
+    local _logfile=
 
     while [[ $# -gt 0  ]]
     do
         case "$1" in
-	        -a|--ascii)
-	            _widec=0
-	            ;;
+	    -a|--ascii)
+	        _widec=0
+	        ;;
             -t|--reentrant)
-	            _reentrant=1
-	            ;;
+	        _reentrant=1
+	        ;;
             -W|--winconsole)
                 _winconsole=1
                 ;;
@@ -67,6 +68,10 @@
             -v|--verbose)
                 _verbose=1
                 ;;
+	    --log)
+		_logfile=$2
+		shift
+		;;
             --)
 		        shift
 		        break

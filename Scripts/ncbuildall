@@ -148,6 +148,9 @@ get_options() {
             -l|--libseparate)
                 _opt_libseparate=1
                 ;;
+	    --log)
+		shift
+		;;
             -h|--help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
