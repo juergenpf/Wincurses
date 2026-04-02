@@ -267,3 +267,20 @@ avoid_hostrun() {
         fi
     fi
 }
+
+powerCall() {
+    local func=$1
+    shift
+    local opts=("$@")
+    local n=${#opts[@]}
+
+    for (( mask=0; mask < (1<<n); mask++ )); do
+        local combo=()
+        for (( i=0; i<n; i++ )); do
+            (( mask & (1<<i) )) && combo+=("${opts[$i]}")
+        done
+        _trace "$func ${combo[*]}"
+        "$func" "${combo[@]}" $OPTARGS
+    done
+}
+

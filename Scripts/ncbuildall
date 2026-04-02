@@ -80,24 +80,12 @@ doit() {
 }
 
 doall() {
-    doit "$@"
-    doit --ascii "$@"
-    doit --interop "$@"
-    doit --spfuncs "$@"
-    doit --ascii --interop "$@"
-    doit --ascii --spfuncs "$@"
-    doit --interop --spfuncs "$@"
-    doit --ascii --interop --spfuncs "$@"
+    local optargs="$@"
+
     if opt_reentrant; then
-        _trace "We also do all the combinations with --reentrant."
-        doit "$@" --reentrant
-        doit "$@" --ascii --reentrant
-        doit "$@" --ascii --reentrant --interop
-        doit "$@" --reentrant --interop
-        doit "$@" --reentrant --spfuncs
-        doit "$@" --ascii --reentrant --spfuncs
-        doit "$@" --reentrant --interop --spfuncs
-        doit "$@" --ascii --reentrant --interop --spfuncs
+        OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
+    else
+        OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
     fi
 }
 
