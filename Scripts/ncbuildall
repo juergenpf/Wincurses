@@ -71,12 +71,20 @@ doall() {
     local optargs="$@"
     local msvcrt=
     local nocon=0
+    local expected=0
+    local libs="ncurses panel menu form"
+    local lib
+    local cnt=0
+
+    opt_libseparate && libs+=" tinfo"
 
     if opt_native; then
         if opt_reentrant; then
             OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
+            expected=16
         else
             OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
+            expected=8
         fi
     else
         opt_ucrt && msvcrt="--msvcrt"
@@ -84,13 +92,25 @@ doall() {
         if opt_reentrant; then
             OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
             [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
-            [ $nocon -ne 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
+            [ $nocon -eq 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
+            expected=16
+            [ $nocon -eq 0 ] && expected=48
         else
             OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
             [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
-            [ $nocon -ne 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
+            [ $nocon -eq 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
+            expected=8
+            [ $nocon -eq 0 ] && expected=24
         fi
-    fi          
+    fi
+    for lib in $libs; do
+        cnt=$(find ${PROJROOT}/${_relative_buildroot} -type f -name "lib${lib}*.a" | grep -v _g\\.a$ | grep -v \\.dll\\.a$ | wc -l)
+        if [ $cnt -ne $expected ]; then
+            _log "Expected $expected builds for library ${lib} but found $cnt. Please check the build output for errors."
+        else
+            _log "Found expected $cnt builds for library ${lib}."
+        fi
+    done          
 }
 
 get_options() {

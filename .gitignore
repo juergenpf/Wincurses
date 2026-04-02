@@ -13,6 +13,9 @@ inst/
 .devcontainer/devcontainer.json
 # Reserved for future use.
 ncbind/
+*.err
+*.log
+*.out
 
 # Build results
 NuGetBuild/

@@ -24,8 +24,13 @@ __is_wsl2=0
 uname -r | grep -q WSL2
 [ $? -eq 0 ] && __is_wsl2=1
 
+if ! { true >&3; } 2>/dev/null; then
+    exec 3>&2
+fi
+
 _log() {
-    echo "$@" >&2
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "[$timestamp] $@" >&3
 }
 
 _trace() {
@@ -284,7 +289,7 @@ powerCall() {
         for (( i=0; i<n; i++ )); do
             (( mask & (1<<i) )) && combo+=("${opts[$i]}")
         done
-        _trace "$func ${combo[*]}"
+        _log "$func ${combo[*]} $OPTARGS"
         "$func" "${combo[@]}" $OPTARGS
     done
 }
