@@ -148,9 +148,10 @@ get_options() {
             -l|--libseparate)
                 _opt_libseparate=1
                 ;;
-	    --log)
-		shift
-		;;
+	        --log)
+		        shift
+                _logfile="$1"
+		        ;;
             -h|--help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
@@ -164,6 +165,7 @@ get_options() {
                 echo "  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)"
                 echo "  -n, --nodebug         Build without debug symbols and features"
                 echo "  -v, --verbose         Enable verbose output"
+                echo " --log <file>           Log verbose output to the specified file"
                 echo "  -h, --help            Show this help message and exit"
                 exit 0
                 ;;

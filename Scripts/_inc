@@ -19,6 +19,7 @@ _relative_buildroot=build
 
 _opt_verbose=0
 _opt_native=0
+_logfile=
 
 __is_wsl2=0
 uname -r | grep -q WSL2

@@ -39,9 +39,10 @@ get_options() {
             -v|--verbose)
                 _opt_verbose=1
                 ;;
-	    --log)
-		shift
-		;;
+	        --log)
+		        shift
+                _logfile="$1"
+		        ;;
             -d|--dynamic)
                 ;;
             -h|--help)
@@ -62,6 +63,7 @@ get_options() {
                 echo "  -n, --nodebug         Build without debug symbols and features"
                 echo "  -c, --clean           Clean build and install directories before building"
                 echo "  -v, --verbose         Enable verbose output"
+                echo " --log <file>           Log verbose output to the specified file"
                 echo "  -h, --help            Show this help message and exit"
                 shift
                 exit 0

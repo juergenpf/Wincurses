@@ -18,7 +18,6 @@
     local _x86=0
     local _dynamic=0
     local _verbose=0
-    local _logfile=
 
     while [[ $# -gt 0  ]]
     do
@@ -69,7 +68,6 @@
                 _verbose=1
                 ;;
 	    --log)
-		_logfile=$2
 		shift
 		;;
             --)
