@@ -24,7 +24,7 @@ __is_wsl2=0
 uname -r | grep -q WSL2
 [ $? -eq 0 ] && __is_wsl2=1
 
-if [ ! -e /dev/fd/3 ]; then
+if [ -t 3 ]; then
     exec 3>&2
 fi
 
