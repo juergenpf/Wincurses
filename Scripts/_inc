@@ -24,7 +24,17 @@ __is_wsl2=0
 uname -r | grep -q WSL2
 [ $? -eq 0 ] && __is_wsl2=1
 
-if [ -t 3 ]; then
+fd_is_open() {
+    # Linux: /proc/self/fd exists
+    if [ -d /proc/self/fd ]; then
+        [ -e /proc/self/fd/$1 ]
+    else
+        # macOS: ls -l /dev/fd
+        ls -l /dev/fd/$1 >/dev/null 2>&1
+    fi
+}
+
+if ! fd_is_open 3; then
     exec 3>&2
 fi
 
