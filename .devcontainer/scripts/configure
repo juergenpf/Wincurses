@@ -6,6 +6,7 @@ WORKSPACE=$(dirname $(dirname "$SCRIPT"))
 HELPER=WincursesHelper.ps1
 
 wsl_profile_helper() {
+    local T=$(mktemp)
     local w=$(type -p where.exe)
     local p=
     local profile=
@@ -24,7 +25,16 @@ wsl_profile_helper() {
     profile=$(wslpath -u "$profile")
     pdir=$(dirname "$profile")
     [ -n "$pdir" ] || return 1
-    cat "$f" | sed -e "s|@REPOPATH@|$ewp|g"  > "${pdir}/${HELPER}"
+    local T=$(mktemp)
+    cat "$f" | sed -e "s|@REPOPATH@|$ewp|g"  > "$T"
+    cmp -s "$T" "${pdir}/${HELPER}"
+    if [ $? -ne 0 ]; then
+         echo "Updating $HELPER in $pdir ..." >&2
+         mv "$T" "${pdir}/${HELPER}"
+    else         
+        echo "$HELPER in $pdir is up to date." >&2
+        rm -f "$T"
+    fi
     return 0
 }
 
@@ -54,10 +64,19 @@ mac2unc() {
 }
 
 prl_profile_helper() {
+    local T=$(mktemp)
     local f="${SCRIPT}/${HELPER}"
     local pdir=~/Downloads
     local safe_p=$(printf '%s' "$PRLPATH" | sed 's/\\/\\\\/g')
-    cat "$f" | sed -e "s|@REPOPATH@|$safe_p|g" > "${pdir}/${HELPER}"
+    cat "$f" | sed -e "s|@REPOPATH@|$safe_p|g" > "$T"
+    cmp -s "$T" "${pdir}/${HELPER}"
+    if [ $? -ne 0 ]; then
+         echo "Updating $HELPER in $pdir. Please copy into your Parallels Powershell Profile directory." >&2
+        mv "$T" "${pdir}/${HELPER}"
+    else         
+        echo "$HELPER in $pdir is up to date." >&2
+        rm -f "$T"
+    fi
     return 0
 }
 
@@ -115,11 +134,20 @@ esac
 [ -n "$LOCALE" ]   || LOCALE="en_US.UTF-8"
 
 if [ -f "${SCRIPT}/../devcontainer.json.in" ]; then
+    T=$(mktemp)
     cat "${SCRIPT}/../devcontainer.json.in" | \
         sed "s|@LOCALE@|$LOCALE|g" | \
         sed "s|@DISTRO@|$DISTRO|g" | \
         sed "s|@REPOPATH@|$WORKSPACE|g" | \
-        sed "s|@TZ@|$TIMEZONE|g" > "${SCRIPT}/../devcontainer.json"
+        sed "s|@TZ@|$TIMEZONE|g" > "$T"
+    cmp -s "$T" "${SCRIPT}/../devcontainer.json"
+    if [ $? -ne 0 ]; then
+         echo "Updating devcontainer.json with current environment settings. " >&2
+         echo "Please consider rebuilding the devcontainer" >&2
+        mv "$T" "${SCRIPT}/../devcontainer.json"
+    else
+        rm -f "$T"
+    fi
 else
     echo "Error: devcontainer.json.in not found in $SCRIPT/../" >&2
     exit 1

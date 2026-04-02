@@ -7,8 +7,6 @@ SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 err=
 
 _opt_debug=1
-_opt_conpty=1
-_opt_winconsole=0
 _opt_dynamic=0
 _opt_libseparate=0
 _opt_native=0
@@ -44,16 +42,6 @@ opt_native() {
     return 1
 }
 
-opt_conpty() {
-    [ $_opt_conpty -ne 0 ] && return 0
-    return 1
-}
-
-opt_winconsole() {
-    [ $_opt_winconsole -ne 0 ] && return 0
-    return 1
-}
-
 opt_ucrt() {
     [ $_opt_ucrt -ne 0 ] && return 0
     return 1
@@ -81,12 +69,28 @@ doit() {
 
 doall() {
     local optargs="$@"
+    local msvcrt=
+    local nocon=0
 
-    if opt_reentrant; then
-        OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
+    if opt_native; then
+        if opt_reentrant; then
+            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
+        else
+            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
+        fi
     else
-        OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
-    fi
+        opt_ucrt && msvcrt="--msvcrt"
+        opt_woa && nocon=1
+        if opt_reentrant; then
+            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
+            [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
+            [ $nocon -ne 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
+        else
+            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
+            [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
+            [ $nocon -ne 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
+        fi
+    fi          
 }
 
 get_options() {
@@ -108,12 +112,6 @@ get_options() {
                 ;;
             -x|--x86)
                 _opt_x86=1
-                ;;
-            -P|--noconpty)
-                _opt_conpty=0
-                ;;
-            -W|--winconsole)
-                _opt_winconsole=1
                 ;;
             -t|--reentrant)
                 _opt_reentrant=1
@@ -138,8 +136,6 @@ get_options() {
                 echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)"
                 echo "  -w, --woa             Build for Windows on ARM (WoA)"
                 echo "  -x, --x86             Build for x86 (32-bit)"
-                echo "  -P, --noconpty        Disable ConPTY support"
-                echo "  -W, --winconsole      Enable Windows console support"
                 echo "  -t, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds."
                 echo "  -d, --dynamic         Build with shared libraries (default is static)"
                 echo "  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)"
@@ -180,8 +176,6 @@ addopts=
 ! opt_ucrt      && addopts+=" --msvcrt"
 opt_x86         && addopts+=" --x86"
 opt_woa         && addopts+=" --woa"
-! opt_conpty    && addopts+=" --noconpty"
-opt_winconsole  && addopts+=" --winconsole"
 opt_dynamic     && addopts+=" --dynamic"
 opt_libseparate && addopts+=" --libseparate" 
 opt_clean       && addopts+=" --clean"

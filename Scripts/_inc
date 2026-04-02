@@ -211,13 +211,18 @@ get_extra_suffix() {
     source "${SCRIPTS}/_function_prolog"
     local s_suff=
     local i_suff=
+    local p_suff=
+    local c_suff=
 
     common_consistency_checks "${_args[@]}"
 
     [ $_interop -ne 0 ] && i_suff=i
     [ $_spfuncs -ne 0 ] && s_suff=s
-
-    echo "${s_suff}${i_suff}"
+    if ! opt_native; then
+        [ $_conpty -ne 0 ]     && p_suff=p
+        [ $_winconsole -ne 0 ] && c_suff=c
+    fi
+    echo "${s_suff}${i_suff}${p_suff}${c_suff}"
 }
 
 relative_builddir() {

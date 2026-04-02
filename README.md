@@ -214,8 +214,6 @@ You may call `ncbuildall` with these options:
   -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)
   -w, --woa             Build for Windows on ARM (WoA)
   -x, --x86             Build for x86 (32-bit)
-  -P, --noconpty        Disable ConPTY support
-  -W, --winconsole      Enable Windows console support
   -t, --reentrant       Build also all combinations possible with --reentrant.
   -d, --dynamic         Build with shared libraries (default is static)
   -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
@@ -235,33 +233,32 @@ The build system (see Scripts/ncbuild) creates a structured build directory to o
 build/
   debug/ or release/
     WindowsCross/
-      x86_64/   (or i686/ for x86, aarch64/ for ARM)
-        nc[w][t]/   (suffixes: w = widec, t = reentrant, both optional)
-          mingw64/ or ucrt64/ or mingw32/ (depends on target config)
+      [x86_64|i686|aarch64] (Depending on architecture you build for)
+        nc[w][t][s][i][p][c]/ (meaning of characters see below)
+          [mingw64|ucrt64|mingw32] (depends on target config)
             [build artifacts, Makefile, etc.]
-```
 
-- The actual build directory path is constructed as:
+```
+Where the suffix characters [w][t][s][i][p][c] mean: 
+- w: wide character build (no --ascii was specified)
+- t: reentrant build
+- s: a build with --spfuncs
+- i: a build with --interop
+- p: For non-native builds only: a ConPTY build (no --noconpty was specified)
+- c: For non-native builds only: a --winconsole build
+
+
+The actual build directory path is constructed as:
   
-  build/{debug|release}/WindowsCross/{arch}/nc{[w][t]}/{config_prefix}/
+  build/{debug|release}/WindowsCross/{arch}/nc{[w][t][s][i][p][c]}/{config_prefix}/
 
   Where:
   - `{arch}` = x86_64, i686, or aarch64
-  - `{[w][t]}` = optional suffixes for widec (w) and reentrant (t)
+  - `{[w][t][s][i][p][c]}` = optional suffixes described above
   - `{config_prefix}` = mingw64, ucrt64, or mingw32
 
 - The install directory mirrors this structure under `inst/` instead of `build/`.
 
-In case of a native build we use extra suffixes for the configuration specific build directories. There we have
- ```
-build/
-  debug/ or release/
-    linux/
-      x86_64/   (aarch64/ for ARM)
-        nc[w][t][s][i]/   (suffixes: w = widec, t = reentrant, s = sp-funcs, i = interop, all optional)
-          usr/
-            [build artifacts, Makefile, etc.]
-```
 
 This structure allows for easy separation and identification of builds for different architectures, C runtimes, and feature sets.
 
@@ -293,25 +290,27 @@ When you now open a new Powershell Terminal session, this helperfile will be inc
 The Push-WincursesTestLocation accepts these switches:
 - -ascii
 - -reentrant
-  -interop
-  -spfuncs
-- -nodebug
+-  -spfuncs
+-  -interop
+- -noconpty
+- -wincurses
 - -x86
 - -woa
 - -dynamic
 - -libseparate
 - -msvcrt
+- -nodebug
 
 They have the same meaning as with ncbuild, but in this case they are only used to compute the name of the build directory used for the configuration you selected by the choice of options. Please not, that Powershell always uses the long names for the options, but only with a single '-' in front of the option.
 So, if you use the alias `pwct`, when you type in Powershell
 ```powershell
 pwct
 ```
-without any options, you will be pushed into the test directory of the build for x86_64 UCRT with wide character support.
+without any options, you will be pushed into the test directory of the build for x86_64 UCRT with wide character support (and ConPTY support if you target Windows).
 ```powershell
-pwct -x86 -msvcrt -Ascii
+pwct -x86 -msvcrt -ascii -winconsole
 ```
-will push you into the test directory of a 32-Bit build without wide-character support for the old MSVCRT C-Runtime. You may leave this location with a simple `Pop-Location` (alias: popd).
+will push you into the test directory of a 32-Bit build without wide-character support for the old MSVCRT C-Runtime and support for the old Windows Console API. You may leave this location with a simple `Pop-Location` (alias: popd).
 Please note that these directories are all UNC directories pointing to locations in the dummy host `\\wsl.localhost` that Microsoft has implemented to allow Windows to navigate seamlessly into directories that are located in Linux Distributions running under WSL2. The pwct alias tries to detect the MSYS2 debugger suitable for that build target and sets an environment variable WNCDEBUG to point to that debugger.
 
 For testing and bug hunting, it is often more productive to use the builtin trace functions of ncurses, by setting the NCURSES_TRACE environment variable to a proper numeric value (see the ncurses documentation for details). But if you develop new functions, e.g. for a port to a different OS, you sometimes really need to be able to debug the code with an ordinary debugger. For the Windows cross-build environment I'll give you a few pragmatic hints how that can be done from the Windows commandline in certain specific build environments.

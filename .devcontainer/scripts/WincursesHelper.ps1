@@ -96,7 +96,11 @@ function ConsistencyCheck {
     param(
         [Switch]$x86,
         [Switch]$woa,
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
+        [Switch]$spfuncs,
+        [Switch]$interop,
+        [Switch]$noconpty,
+        [Switch]$winconsole
     )
     if ($x86 -and $woa) {
         Write-Error "-x86 and -WoA are mutually exclusive"
@@ -108,6 +112,10 @@ function ConsistencyCheck {
     }
     if ($woa -and $msvcrt) {
         Write-Error "-WoA and --msvcrt are mutually exclusive"
+        return $false
+    }
+    if ($noconpty -and $winconsole) {
+        Write-Error "-noconpty and --winconsole are mutually exclusive"
         return $false
     }
     return $true
@@ -144,7 +152,9 @@ function GetSuffix {
 function GetExtraSuffix {
     param(
         [Switch]$spfuncs,
-        [Switch]$interop
+        [Switch]$interop,
+        [Switch]$noconpty,
+        [Switch]$winconsole
     )
     $suffix = ""
     if ($spfuncs) {
@@ -152,6 +162,12 @@ function GetExtraSuffix {
     }
     if ($interop) {
         $suffix = "${suffix}i"
+    }
+    if (!$noconpty) {
+        $suffix = "${suffix}p"
+    }
+    if ($winconsole) {
+        $suffix = "${suffix}c"
     }
     return $suffix
 }
@@ -165,10 +181,12 @@ function RelativeBuildDir {
         [Switch]$ascii,
         [Switch]$x86,
         [Switch]$woa,
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
+        [Switch]$noconpty,
+        [Switch]$winconsole
     )
     $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
-    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop
+    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole
     $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
     return (Join-Path (Join-Path $pre "nc${suffix}${extraSuffix}") (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
 }
@@ -183,10 +201,12 @@ function RelativeInstallBase {
         [Switch]$ascii,
         [Switch]$x86,
         [Switch]$woa,
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
+        [Switch]$noconpty,
+        [Switch]$winconsole
     )
     $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
-    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop
+    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole
     $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
     return (Join-Path $pre "nc${suffix}${extraSuffix}")
 }
@@ -200,9 +220,12 @@ function RelativeInstallDir {
         [Switch]$ascii,
         [Switch]$x86,
         [Switch]$woa,
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
+        [Switch]$noconpty,
+        [Switch]$winconsole
+
     )
-    return (Join-Path (RelativeInstallBase -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
+    return (Join-Path (RelativeInstallBase -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
 }   
 
 function Push-WincursesTestLocation {
@@ -210,27 +233,28 @@ function Push-WincursesTestLocation {
     param(
         [Switch]$ascii,
         [Switch]$reentrant,
-        [Switch]$nodebug,
+        [Switch]$spfuncs,
+        [Switch]$interop,
+        [Switch]$noconpty,
+        [Switch]$winconsole,
         [Switch]$x86,
         [Switch]$woa,
         [Switch]$dynamic,
         [Switch]$libSeparate,
         [Switch]$msvcrt,
-        [Switch]$spfuncs,
-        [Switch]$interop
-
+        [Switch]$nodebug
     )
 
-    if (-not (ConsistencyCheck -x86:$x86 -woa:$woa -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop)) {
+    if (-not (ConsistencyCheck -x86:$x86 -woa:$woa -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole)) {
         Write-Error "Inconsistent configuration"
         return
     }
 
     $Env:WNCDEBUG=""
     
-    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop))
+    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole))
     if (Test-Path -path $loc  -PathType Container) {
-        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop))
+        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole))
         [string]$lib = (Join-Path $loc "lib")
         [string]$bin = (Join-Path $inst "bin")
         if ($dynamic) {
