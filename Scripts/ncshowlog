@@ -41,6 +41,27 @@ opt_err() {
     return 1
 }
 
+_guess_jobid() {
+    local jobid
+    local stamp
+    local options
+    local jobfile=${NC_CURRENT_PREFIX}.job
+    pushd $PROJROOT/${NC_LOGBASE} >/dev/null
+    if [ -f "$jobfile" ]; then
+        source "$jobfile"
+        echo "$jobid"
+    else
+        jobfile=${NC_LAST_PREFIX}.job
+        if [ -f "$jobfile" ]; then
+            source "$jobfile"
+            echo "$jobid"
+        else
+            _fail "No current or last job found to guess job ID from"
+        fi
+    fi
+    popd >/dev/null
+}
+
 get_options() {
     local err=
     while [[ $# -gt 0 ]]
@@ -58,8 +79,11 @@ get_options() {
                 _opt_show=1
                 _mainopt=$(expr $_mainopt + 1)
                 shift
-                [ $# -gt 0 ] || _fail "Missing job ID for --show option"
-                _jobid="$1"
+                if [ $# -gt 0 ]; then
+                    _jobid="$1"
+                else
+                    _jobid=$(_guess_jobid)
+                fi
                 [ -n "$_jobid" ] || _fail "Invalid job ID for --show option"
                 ;;
             -o|--out)
@@ -122,6 +146,7 @@ _list() {
         echo "JobID: $jobid, Timestamp: $stamp, Options: $options"
     done | sort -k 2 -u -n -r
 }
+
 
 _find_job() {
     local job="$1"
