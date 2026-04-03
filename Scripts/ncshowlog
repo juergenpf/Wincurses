@@ -60,6 +60,7 @@ get_options() {
                 shift
                 [ $# -gt 0 ] || _fail "Missing job ID for --show option"
                 _jobid="$1"
+                [ -n "$_jobid" ] || _fail "Invalid job ID for --show option"
                 ;;
             -o|--out)
                 _opt_out=1
@@ -142,7 +143,7 @@ _find_job() {
 }
 
 _show() {
-    local jobfile=$(_find_job "$_jobid")
+    local jobfile="$(_find_job $_jobid)"
     local jobid
     local stamp
     local options
