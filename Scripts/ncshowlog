@@ -113,11 +113,12 @@ fi
 _list() {
     local jobid
     local stamp
+    local options
     for job in *.job
     do
         [ -f "$job" ] || continue
         source "$job"
-        echo "JobID: $jobid, Timestamp: $stamp"
+        echo "JobID: $jobid, Timestamp: $stamp, Options: $options"
     done | sort -k 2 -u -n -r
 }
 
@@ -125,6 +126,9 @@ _find_job() {
     local job="$1"
     local jobfile="${NC_REPLACE_PREFIX}-${job}.job"
     local res=
+    local jobid
+    local stamp
+    local options
     if [ ! -f "$jobfile" ]; then
         jobfile=${NC_CURRENT_PREFIX}.job
         if [ -f "$jobfile" ]; then   
@@ -139,8 +143,9 @@ _find_job() {
 
 _show() {
     local jobfile=$(_find_job "$_jobid")
-    local stamp
     local jobid
+    local stamp
+    local options
     local name=
     local ext="log"
     local pager=$(typ e -p less)

@@ -162,6 +162,7 @@ ln -f $NCJOB $NC_CURRENT_JOB
 cat >> $NCJOB <<EOF
 jobid=$jobid
 stamp=$stamp
+options="$addopts"
 EOF
 popd >/dev/null
 echo "Queued Wincurses batch job id $jobid, stamp is $stamp"
