@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# See License.md in the project root for license information.
+#
+SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
+. $SCRIPTS/internal/inc
+. $SCRIPTS/internal/batch
+
+err=
+_jobid=
+_stamp=
+_mainopt=0
+
+_opt_clean=0
+_opt_list=0
+_opt_show=0
+_opt_out=0
+_opt_err=0
+
+opt_clean() {
+    [ $_opt_clean -ne 0 ] && return 0
+    return 1
+}
+
+opt_list() {
+    [ $_opt_list -ne 0 ] && return 0
+    return 1
+}
+
+opt_show() {
+    [ $_opt_show -ne 0 ] && return 0
+    return 1
+}
+
+opt_out() {
+    [ $_opt_out -ne 0 ] && return 0
+    return 1
+}
+
+opt_err() {
+    [ $_opt_err -ne 0 ] && return 0
+    return 1
+}
+
+get_options() {
+    local err=
+    while [[ $# -gt 0 ]]
+    do
+	    case "$1" in
+            -c|--clean)
+                _opt_clean=1
+                _mainopt=$(expr $_mainopt + 1)
+                ;;
+            -l|--list)
+                _opt_list=1
+                _mainopt=$(expr $_mainopt + 1)
+                ;;
+            -s|--show)
+                _opt_show=1
+                _mainopt=$(expr $_mainopt + 1)
+                shift
+                [ $# -gt 0 ] || _fail "Missing job ID for --show option"
+                _jobid="$1"
+                ;;
+            -o|--out)
+                _opt_out=1
+                ;;
+            -e|--err)
+                _opt_err=1
+                ;;
+            -h|--help)
+                echo "Usage: $0 [options]"
+                echo "Options:"
+                echo "  -c, --clean           Clean all old job entries."
+                echo "  -l, --list            List all job entries."
+                echo "  -s, --show            Show details of a specific job entry."
+                echo "  -o, --out             Show the standard output of a specific job entry."
+                echo "  -e, --err             Show the standard error of a specific job entry."
+                exit 0
+                ;;
+	        --)
+		        shift
+		        break
+		        ;;
+            -*)
+                _fail "Unknown option: $1"
+                ;;    
+	        *)
+		        err="$err $1"
+		        break
+		        ;;
+	    esac
+        shift
+    done
+    [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
+    return 0
+}
+
+
+get_options $@
+[ $? -ne 0 ] && _fail "Invalid options: $err"
+[ $_mainopt -gt 1 ] && _fail "Only one of --clean, --list or --show options can be specified at the same time"
+
+if opt_out || opt_err; then
+    if [ -z "$_jobid" ]; then
+        _fail "Job ID must be specified with --out or --err option"
+    fi
+    if ! opt_show; then
+        _fail "--show option must be specified with --out or --err option"
+    fi
+    opt_out && opt_err && _fail "Cannot specify both --out and --err options at the same time"
+fi
+
+_list() {
+    local jobid
+    local stamp
+    for job in *.job
+    do
+        [ -f "$job" ] || continue
+        source "$job"
+        echo "JobID: $jobid, Timestamp: $stamp"
+    done | sort -k 2 -u -n -r
+}
+
+_find_job() {
+    local job="$1"
+    local jobfile="${NC_REPLACE_PREFIX}-${job}.job"
+    local res=
+    if [ ! -f "$jobfile" ]; then
+        jobfile=${NC_CURRENT_PREFIX}.job
+        if [ -f "$jobfile" ]; then   
+           source "$jobfile"
+           [ "$jobid" == "$job" ] && res="$jobfile"
+        fi
+    else
+        res="$jobfile"
+    fi
+    echo "$res"
+}
+
+_show() {
+    local jobfile=$(_find_job "$_jobid")
+    local stamp
+    local jobid
+    local name=
+    local ext="log"
+    local pager=$(typ e -p less)
+    [ -n "$pager" ] || pager=$(type -p more)
+    [ -z "$pager" ] && pager=cat
+    [ -n "$jobfile" ] || _fail "No job found with ID $_jobid"
+    source "$jobfile"
+    name=${NC_BATCH_PREFIX}-${stamp}
+    opt_out && ext="out"
+    opt_err && ext="err"
+    if [ -f "${name}.${ext}.xz" ]; then
+        xzcat "${name}.${ext}.xz" | $pager
+    else
+        if [ -f "${name}.${ext}" ]; then
+            cat "${name}.${ext}" | $pager
+        else
+            _fail "No ${ext} file found for job ID $_jobid"
+        fi
+    fi
+}
+
+_clean() {
+    rm -f ${NC_BATCH_PREFIX}-*.job
+    rm -f ${NC_BATCH_PREFIX}-*.log
+    rm -f ${NC_BATCH_PREFIX}-*.out
+    rm -f ${NC_BATCH_PREFIX}-*.err
+    rm -f ${NC_BATCH_PREFIX}-*.devc
+    rm -f ${NC_BATCH_PREFIX}-*.out.xz
+    rm -f ${NC_BATCH_PREFIX}-*.err.xz
+    rm -f ${NC_REPLACE_PREFIX}-*.job
+    rm -f ${NC_LAST_PREFIX}.job
+
+}
+
+pushd $PROJROOT/${NC_LOGBASE} >/dev/null
+opt_list && _list
+opt_show && _show
+opt_clean && _clean
+popd >/dev/null
+exit 0

@@ -254,6 +254,13 @@ relative_installdir() {
     echo "$(relative_installbase "$@")/${config_prefix}"
 }
 
+has_clean() {
+    source "${SCRIPTS}/internal/function_prolog"
+    common_consistency_checks "${_args[@]}"
+    [ $_clean -ne 0 ] && return 0
+    return 1
+}
+
 get_host_bht() {
     source "${SCRIPTS}/_function_prolog"
     local host_bht="x86_64-w64-mingw32ucrt"

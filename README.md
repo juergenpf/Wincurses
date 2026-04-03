@@ -225,6 +225,30 @@ You may call `ncbuildall` with these options:
 ### ncbuildinfo
 This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
 
+### ncbatchbuild
+This command is not for use inside the container, but on the host system running the container. If this system has the at utulity and the command `batch` is available, it will queue a `ncbuildall` command into the batch queue. It accepts the same options like the `ncbuildall` command.
+
+### ncshowlog
+If you use `ncbatchbuild` you may want to inspect the results and the status of such a build in a comfortable way. This is the purpose of this command. It has these options:
+```bash
+  -c, --clean           Clean all old job entries.
+  -l, --list            List all job entries.
+  -s, --show            Show details of a specific job entry.
+  -o, --out             Show the standard output of a specific job entry.
+  -e, --err             Show the standard error of a specific job entry.
+```
+The `--show` option requires a job ID as additional argument, the `--out` or `--err` options can only be used together with `--show`.
+
+Example use:
+```bash
+$ ncshowlog --show 91
+```
+will show the `log` output of the job with ID 91. If you use
+```bash
+$ ncshowlog --show 91 --err
+```
+you will see the stderr output of that job.
+
 ## Build and Install Directory Layout
 
 The build system (see Scripts/ncbuild) creates a structured build directory to organize cross-compiled outputs for different targets and configurations. The layout is as follows:

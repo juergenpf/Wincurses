@@ -69,7 +69,7 @@ echo "Running at $(date)"
 _sep
 opts="$@"
 cd $PROJROOT
-./Scripts/ncnuke
+has_clean "$@" && ./Scripts/ncnuke
 echo "Bringig up devcontainer..."
 devcontainer up --workspace-folder . --remove-existing-container >${LB}.devc 2>&1
 
