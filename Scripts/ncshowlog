@@ -149,7 +149,7 @@ _show() {
     local options
     local name=
     local ext="log"
-    local pager=$(type e -p less)
+    local pager=$(type -p less)
     [ -n "$pager" ] || pager=$(type -p more)
     [ -z "$pager" ] && pager=cat
     [ -n "$jobfile" ] || _fail "No job found with ID $_jobid"
