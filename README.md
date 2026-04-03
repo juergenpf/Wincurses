@@ -232,7 +232,7 @@ This command is not for use inside the container, but on the host system running
 If you use `ncbatchbuild` you may want to inspect the results and the status of such a build in a comfortable way. This is the purpose of this command. It has these options:
 ```bash
   -c, --clean           Clean all old job entries.
-  -l, --list            List all job entries.
+  -l, --list            List all job entries (this is the default if no other options are specified).
   -s, --show            Show details of a specific job entry.
   -o, --out             Show the standard output of a specific job entry.
   -e, --err             Show the standard error of a specific job entry.

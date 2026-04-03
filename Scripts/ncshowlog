@@ -72,7 +72,7 @@ get_options() {
                 echo "Usage: $0 [options]"
                 echo "Options:"
                 echo "  -c, --clean           Clean all old job entries."
-                echo "  -l, --list            List all job entries."
+                echo "  -l, --list            List all job entries (this is the default if no other options are specified)."
                 echo "  -s, --show            Show details of a specific job entry."
                 echo "  -o, --out             Show the standard output of a specific job entry."
                 echo "  -e, --err             Show the standard error of a specific job entry."
@@ -182,6 +182,7 @@ _clean() {
 }
 
 pushd $PROJROOT/${NC_LOGBASE} >/dev/null
+[ $_mainopt -eq 0 ] && _list
 opt_list && _list
 opt_show && _show
 opt_clean && _clean
