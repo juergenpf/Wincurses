@@ -64,7 +64,7 @@ _rename() {
 trap _rename EXIT
 
 _sep
-echo "Running on $(uname -n), OS is $(uname -s)"
+echo "Running on $(uname -n), OS is $(uname -s), Machine is $(uname -m)"
 echo "Running at $(date)"
 _sep
 opts="$@"
@@ -73,13 +73,13 @@ has_clean "$@" && ./Scripts/ncnuke
 echo "Bringig up devcontainer..."
 devcontainer up --workspace-folder . --remove-existing-container >${LB}.devc 2>&1
 
-echo "Runnig buildall for Windows on Intel"
+echo "Runnig buildall for Windows"
+echo "Options are: $opts"
 tstart=$(date "+%s")
 devcontainer exec ncbuildall $opts --log ${LB}.log 2>>${LB}.err >>${LB}.out
 D=$(_elapsed)
 _timing $D
 _timing $D >> ${LB}.log
 cat ${LB}.log
-
 _rename
 exit 0
