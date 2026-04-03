@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# See License.md in the project root for license information.
+#
+SCRIPTS=$(cd $(dirname $BASH_SOURCE)/.. && pwd)
+. $SCRIPTS/internal/inc
+. $SCRIPTS/internal/batch
+
+stamp=$NCSTAMP
+[ -n "$stamp" ] || _fail "No stamp passed as argument"
+in_container && _fail "This script is not meant to be run inside the devcontainer"
+
+N=$NC_BATCH_PREFIX
+M=current-${NC_BATCH_PREFIX}
+R=${NC_REPLACE_PREFIX}
+L=$NC_LOGBASE
+LN=${NC_BATCH_PREFIX}-${stamp}
+LB=${NC_LOGBASE}/${LN}
+
+tstart=$(date "+%s")
+
+_sep() {
+    echo "==================================================================================="
+}
+
+_elapsed() {
+    local tend=$(date "+%s")
+    local D=$(expr $tend - $tstart)
+    echo $D
+}
+
+_timing() {
+    echo "Duration: $1 Seconds"
+}
+
+_compress() {
+    local xz=$(type -p xz)
+    local e
+    [ -n "$xz" ] || return 1
+    pushd $NC_LOGBASE >/dev/null
+    for e in out err
+    do
+        [ -f ${NC_BATCH_PREFIX}-${stamp}.${e} ] || continue
+        $xz -z -k ${NC_BATCH_PREFIX}-${stamp}.${e}
+        [ $? -eq 0 ] && rm -f ${NC_BATCH_PREFIX}-${stamp}.${e}
+    done
+    popd >/dev/null
+    return 0
+}
+
+_rename() {
+    local jobid
+    [ -f "${NC_LOGBASE}/${NC_BATCH_PREFIX}-${stamp}.job" ] || return 1
+    source "${NC_LOGBASE}/${NC_BATCH_PREFIX}-${stamp}.job"
+    pushd $NC_LOGBASE >/dev/null
+    ln -f ${NC_BATCH_PREFIX}-${stamp}.job ${NC_REPLACE_PREFIX}-${jobid}.job
+    rm -f ${NC_BATCH_PREFIX}-${stamp}.job
+    rm -f $NC_CURRENT_JOB
+    ln -f ${NC_REPLACE_PREFIX}-${jobid}.job $NC_LAST_PREFIX.job
+    popd >/dev/null
+    _compress
+    return 0
+}
+
+trap _rename EXIT
+
+_sep
+echo "Running on $(uname -n), OS is $(uname -s)"
+echo "Running at $(date)"
+_sep
+opts="$@"
+cd $PROJROOT
+./Scripts/ncnuke
+echo "Bringig up devcontainer..."
+devcontainer up --workspace-folder . --remove-existing-container >${LB}.devc 2>&1
+
+echo "Runnig buildall for Windows on Intel"
+tstart=$(date "+%s")
+devcontainer exec ncbuildall $opts --log ${LB}.log 2>>${LB}.err >>${LB}.out
+D=$(_elapsed)
+_timing $D
+_timing $D >> ${LB}.log
+cat ${LB}.log
+
+_rename
+exit 0

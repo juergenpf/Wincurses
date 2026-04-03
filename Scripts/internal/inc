@@ -104,7 +104,7 @@ is_native_darwin_intel() {
 # -----------------------------------------------------------------------------------
 #
 is_default_build() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
     local _nondefault_opts=0
 
     [ $_widec -eq 0 ]       && _nondefault_opts=$(expr $_nondefault_opts + 1)
@@ -124,7 +124,7 @@ is_default_build() {
 }
 
 common_consistency_checks() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
 
     [ $_ucrt -eq 0 ]     && [ $_native -ne 0 ] && _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
     [ $_x86 -ne 0 -o $_woa -ne 0 ] && [ $_native -ne 0 ] && _fail "--x86 or --woa are specific for Windows cross builds and cannot be used for native builds." 
@@ -139,7 +139,7 @@ common_consistency_checks() {
 }
 
 get_config_prefix() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
    local prefix="$UCRT64_PREFIX"
  
     common_consistency_checks "${_args[@]}"
@@ -163,7 +163,7 @@ get_config_prefix() {
 }
 
 get_target_arch() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
     local arch=x86_64
 
     common_consistency_checks "${_args[@]}"
@@ -177,7 +177,7 @@ get_target_arch() {
 }
 
 base_os_prefix() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
     local prefix=WindowsCross
     
     common_consistency_checks "${_args[@]}"
@@ -190,7 +190,7 @@ base_os_prefix() {
 }
 
 build_prefix() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
     local prefix=debug
 
     local arch=$(get_target_arch "${_args[@]}")
@@ -203,7 +203,7 @@ build_prefix() {
 }
 
 get_suffix() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
     local sufft=
     local suffw=w
 
@@ -216,7 +216,7 @@ get_suffix() {
 }
 
 get_extra_suffix() {
-    source "${SCRIPTS}/_function_prolog"
+    source "${SCRIPTS}/internal/function_prolog"
     local s_suff=
     local i_suff=
     local p_suff=

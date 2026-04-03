@@ -2,7 +2,7 @@
 # See License.md in the project root for license information.
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
-. $SCRIPTS/_inc
+. $SCRIPTS/internal/inc
 
 get_options() {
     local err=
@@ -172,7 +172,7 @@ gen_gdbinit_prl() {
 
 
 do_config() {
-    source "$SCRIPTS/_function_prolog"
+    source "$SCRIPTS/internal/function_prolog"
 
     local srcdir=$PROJROOT/ncurses
     local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "${_args[@]}")
@@ -353,7 +353,7 @@ do_config() {
 }
 
 do_build() {
-    source "$SCRIPTS/_function_prolog"
+    source "$SCRIPTS/internal/function_prolog"
     local srcdir=$PROJROOT/ncurses
     local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "${_args[@]}")
 
@@ -395,7 +395,7 @@ do_build() {
 }
 
 do_install() {
-    source "$SCRIPTS/_function_prolog"
+    source "$SCRIPTS/internal/function_prolog"
     local srcdir=$PROJROOT/ncurses
     local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "${_args[@]}")
     local instdir=${PROJROOT}/${_relative_instroot}/$(relative_installbase "${_args[@]}")

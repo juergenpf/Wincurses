@@ -2,7 +2,8 @@
 # See License.md in the project root for license information.
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
-. $SCRIPTS//internal/inc
+. $SCRIPTS/internal/inc
+. $SCRIPTS/internal/batch
 
 err=
 
@@ -10,12 +11,10 @@ _opt_debug=1
 _opt_dynamic=0
 _opt_libseparate=0
 _opt_native=0
-_opt_clean=0
 _opt_reentrant=0
 _opt_ucrt=1
 _opt_x86=0
 _opt_woa=0
-
 
 opt_debug() {
     [ $_opt_debug -ne 0 ] && return 0
@@ -62,65 +61,11 @@ opt_clean() {
     return 1
 }
 
-doit() {
-    ${SCRIPTS}/ncbuild $@
-    [ $? -ne 0 ] && _fail "Build failed with options: $@"
-}
-
-doall() {
-    local optargs="$@"
-    local msvcrt=
-    local nocon=0
-    local expected=0
-    local libs="ncurses panel menu form"
-    local lib
-    local cnt=0
-
-    opt_libseparate && libs+=" tinfo"
-
-    if opt_native; then
-        if opt_reentrant; then
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
-            expected=16
-        else
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
-            expected=8
-        fi
-    else
-        opt_ucrt && msvcrt="--msvcrt"
-        opt_woa && nocon=1
-        if opt_reentrant; then
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
-            expected=16
-            [ $nocon -eq 0 ] && expected=48
-        else
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
-            expected=8
-            [ $nocon -eq 0 ] && expected=24
-        fi
-    fi
-    for lib in $libs; do
-        cnt=$(find ${PROJROOT}/${_relative_buildroot} -type f -name "lib${lib}*.a" | grep -v _g\\.a$ | grep -v \\.dll\\.a$ | wc -l)
-        if [ $cnt -ne $expected ]; then
-            _log "Expected $expected builds for library ${lib} but found $cnt. Please check the build output for errors."
-        else
-            _log "Found expected $cnt builds for library ${lib}."
-        fi
-    done          
-}
-
 get_options() {
     local err=
     while [[ $# -gt 0 ]]
     do
 	    case "$1" in
-            -c|--clean)
-                _opt_clean=1
-                ;;
             -N|--native)
                 _opt_native=1
                 ;;
@@ -148,14 +93,9 @@ get_options() {
             -l|--libseparate)
                 _opt_libseparate=1
                 ;;
-	        --log)
-		        shift
-                _logfile="$1"
-		        ;;
             -h|--help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
-                echo "  -c, --clean           Clean build and install directories before building"
                 echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
                 echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)"
                 echo "  -w, --woa             Build for Windows on ARM (WoA)"
@@ -165,7 +105,6 @@ get_options() {
                 echo "  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)"
                 echo "  -n, --nodebug         Build without debug symbols and features"
                 echo "  -v, --verbose         Enable verbose output"
-                echo " --log <file>           Log verbose output to the specified file"
                 echo "  -h, --help            Show this help message and exit"
                 exit 0
                 ;;
@@ -187,14 +126,11 @@ get_options() {
     return 0
 }
 
+in_container && _fail "This script is not meant to be run inside the devcontainer"
+[ -f "$NC_CURRENT_JOB" ] && _fail "A batch build is already running"
+
 get_options $@
 [ $? -ne 0 ] && _fail "Invalid options: $err"
-
-if ! opt_native; then
-    in_container || _fail "Not running in devcontainer." 
-fi
-
-avoid_hostrun
 
 addopts=
 ! opt_debug     && addopts+=" --nodebug"
@@ -203,10 +139,24 @@ opt_x86         && addopts+=" --x86"
 opt_woa         && addopts+=" --woa"
 opt_dynamic     && addopts+=" --dynamic"
 opt_libseparate && addopts+=" --libseparate" 
-opt_clean       && addopts+=" --clean"
 opt_verbose     && addopts+=" --verbose"
 opt_native      && addopts+=" --native"
 
-doall $addopts
-
+pushd $PROJROOT >/dev/null
+stamp=$(date +"%Y%m%d%H%M%S")
+jobid=$(batch <<EOF 2>&1 | sed -n 's/.*[Jj]ob \([0-9][0-9]*\).*/\1/p'
+cd $PROJROOT
+NCSTAMP=$stamp ./Scripts/internal/ncbatch $addopts
+EOF
+)
+NCJOB=${NC_LOGBASE}/${NC_BATCH_PREFIX}-${stamp}.job
+rm -f $NCJOB $NC_CURRENT_JOB
+touch $NCJOB
+ln -f $NCJOB $NC_CURRENT_JOB
+cat >> $NCJOB <<EOF
+jobid=$jobid
+stamp=$stamp
+EOF
+popd >/dev/null
+echo "Queued Wincurses batch job id $jobid, stamp is $stamp"
 exit 0

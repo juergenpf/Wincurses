@@ -2,7 +2,7 @@
 # See License.md in the project root for license information.
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
-. $SCRIPTS/_inc
+. $SCRIPTS/internal/inc
 
 pushd $PROJROOT > /dev/null
 _log "Cleaning build and install directories..."
