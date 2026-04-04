@@ -24,7 +24,7 @@ function GetConfigPrefix {
     param(
         [Switch]$msvcrt,
         [Switch]$x86,
-        [Switch]$woa
+        [Switch]$aarch64
     )
     [string]$prefix="ucrt64"
     if ($msvcrt) {
@@ -33,7 +33,7 @@ function GetConfigPrefix {
             $prefix="mingw32"
         }
     }
-    if ($woa) {
+    if ($aarch64) {
         $prefix="clangarm64"
     }
     return $prefix
@@ -42,9 +42,9 @@ function GetConfigPrefix {
 function GetTargetArch {
     param(
         [Switch]$x86,
-        [Switch]$woa
+        [Switch]$aarch64
     )
-    if ($woa) {
+    if ($aarch64) {
         return "aarch64"
     }
     if ($x86) {
@@ -58,19 +58,19 @@ function Get-MinGWDebugPath {
     param(
         [Switch]$msvcrt,
         [Switch]$x86,
-        [Switch]$woa
+        [Switch]$aarch64
     )
     [string]$prefix="ucrt64"
     $registryPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MSYS2 64bit_is1"
     $installDir = (Get-ItemProperty -Path $registryPath -ErrorAction SilentlyContinue).InstallLocation
-    [string]$prefix = GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa
+    [string]$prefix = GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -aarch64:$aarch64
     [string]$debugger="gdb"
 
-    if ($woa -and ($x86 -or $msvcrt)) {
-        Write-Error "-woa Option must not be used together with -x86 or -msvcrt"
+    if ($aarch64 -and ($x86 -or $msvcrt)) {
+        Write-Error "-aarch64 option must not be used together with -x86 or -msvcrt"
         return $null
     }
-    if ($woa) {
+    if ($aarch64) {
         $debugger="lldb"
     }
 
@@ -94,28 +94,37 @@ function Get-MinGWDebugPath {
 
 function ConsistencyCheck {
     param(
-        [Switch]$x86,
-        [Switch]$woa,
-        [Switch]$msvcrt,
+        [Switch]$release,
+        [Switch]$ascii,
+        [Switch]$reentrant,
         [Switch]$spfuncs,
         [Switch]$interop,
-        [Switch]$noconpty,
-        [Switch]$winconsole
+        [Switch]$conpty,
+        [Switch]$winconsole,
+        [Switch]$x86,
+        [Switch]$aarch64,
+        [Switch]$dynamic,
+        [Switch]$termlib,
+        [Switch]$msvcrt
     )
-    if ($x86 -and $woa) {
-        Write-Error "-x86 and -WoA are mutually exclusive"
+    [int]$targets=0
+
+    if ($x86) { $targets++ }
+    if ($aarch64) { $targets++ }
+    if ($targets -gt 1) {
+        Write-Error "Multiple target architectures specified. Only one of -x86 or -aarch64 can be used. x86_64 is default."
+        return $false
+    }
+    if (-not ($conpty -or $winconsole)) {
+        Write-Error "At least one of -conpty or -winconsole must be specified"
         return $false
     }
     if ($x86 -and (-not $msvcrt)) {
         Write-Error "-x86 requires -msvcrt"
         return $false
     }
-    if ($woa -and $msvcrt) {
-        Write-Error "-WoA and --msvcrt are mutually exclusive"
-        return $false
-    }
-    if ($noconpty -and $winconsole) {
-        Write-Error "-noconpty and --winconsole are mutually exclusive"
+    if ($aarch64 -and $msvcrt) {
+        Write-Error "-aarch64 and -msvcrt are mutually exclusive. Windows on ARM implies UCRT."
         return $false
     }
     return $true
@@ -123,15 +132,15 @@ function ConsistencyCheck {
 
 function BuildPrefix {
     param(
-        [Switch]$nodebug,
+        [Switch]$release,
         [Switch]$x86,
-        [Switch]$woa
+        [Switch]$aarch64
     )
     [string]$prefix = "debug"
-    if ($nodebug) {
+    if ($release) {
         $prefix = "release"
     }
-    return (Join-Path (Join-Path $prefix "WindowsCross") (GetTargetArch -x86:$x86 -woa:$woa))
+    return (Join-Path (Join-Path $prefix "WindowsCross") (GetTargetArch -x86:$x86 -aarch64:$aarch64))
 }
 
 function GetSuffix {
@@ -139,21 +148,22 @@ function GetSuffix {
         [Switch]$reentrant,
         [Switch]$ascii
     )
-    $suffix = ""
+    [string]$sufft = ""
+    [string]$suffw = ""
     if ($reentrant) {
-        $suffix = "t${suffix}"
+        $sufft = "t"
     }
     if (-not $ascii) {
-        $suffix = "w${suffix}"
+        $suffw = "w"
     }
-    return $suffix
+    return "${sufft}${suffw}"
 }
 
 function GetExtraSuffix {
     param(
         [Switch]$spfuncs,
         [Switch]$interop,
-        [Switch]$noconpty,
+        [Switch]$conpty,
         [Switch]$winconsole
     )
     $suffix = ""
@@ -163,7 +173,7 @@ function GetExtraSuffix {
     if ($interop) {
         $suffix = "${suffix}i"
     }
-    if (!$noconpty) {
+    if ($conpty) {
         $suffix = "${suffix}p"
     }
     if ($winconsole) {
@@ -174,87 +184,89 @@ function GetExtraSuffix {
 
 function RelativeBuildDir {
     param(
-        [Switch]$nodebug,
+        [Switch]$release,
         [Switch]$reentrant,
         [Switch]$interop,
         [Switch]$spfuncs,
         [Switch]$ascii,
         [Switch]$x86,
-        [Switch]$woa,
+        [Switch]$aarch64,
         [Switch]$msvcrt,
-        [Switch]$noconpty,
+        [Switch]$conpty,
         [Switch]$winconsole
     )
     $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
-    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole
-    $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
-    return (Join-Path (Join-Path $pre "nc${suffix}${extraSuffix}") (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
+    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop -conpty:$conpty -winconsole:$winconsole
+    $pre = BuildPrefix -release:$release -x86:$x86 -aarch64:$aarch64
+    return (Join-Path (Join-Path $pre "nc${suffix}${extraSuffix}") (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -aarch64:$aarch64))
 }
 
 
 function RelativeInstallBase {
     param(
-        [Switch]$nodebug,
+        [Switch]$release,
         [Switch]$reentrant,
         [Switch]$interop,
         [Switch]$spfuncs,
         [Switch]$ascii,
         [Switch]$x86,
-        [Switch]$woa,
+        [Switch]$aarch64,
         [Switch]$msvcrt,
-        [Switch]$noconpty,
+        [Switch]$conpty,
         [Switch]$winconsole
     )
     $suffix = GetSuffix -reentrant:$reentrant -ascii:$ascii
-    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole
-    $pre = BuildPrefix -nodebug:$nodebug -x86:$x86 -woa:$woa
+    $extraSuffix = GetExtraSuffix -spfuncs:$spfuncs -interop:$interop -conpty:$conpty -winconsole:$winconsole
+    $pre = BuildPrefix -release:$release -x86:$x86 -aarch64:$aarch64
     return (Join-Path $pre "nc${suffix}${extraSuffix}")
 }
 
 function RelativeInstallDir {
     param(
-        [Switch]$nodebug,
+        [Switch]$release,
         [Switch]$reentrant,
         [Switch]$interop,
         [Switch]$spfuncs,
         [Switch]$ascii,
         [Switch]$x86,
-        [Switch]$woa,
+        [Switch]$aarch64,
         [Switch]$msvcrt,
-        [Switch]$noconpty,
+        [Switch]$conpty,
         [Switch]$winconsole
-
     )
-    return (Join-Path (RelativeInstallBase -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -woa:$woa))
-}   
+    return (Join-Path (RelativeInstallBase -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$conpty -winconsole:$winconsole) (GetConfigPrefix -msvcrt:$msvcrt -x86:$x86 -aarch64:$aarch64))
+}
 
 function Push-WincursesTestLocation {
     [CmdletBinding()]
     param(
+        [Switch]$release,
         [Switch]$ascii,
         [Switch]$reentrant,
         [Switch]$spfuncs,
         [Switch]$interop,
-        [Switch]$noconpty,
+        [Switch]$conpty,
         [Switch]$winconsole,
         [Switch]$x86,
-        [Switch]$woa,
+        [Switch]$aarch64,
         [Switch]$dynamic,
-        [Switch]$libSeparate,
-        [Switch]$msvcrt,
-        [Switch]$nodebug
+        [Switch]$termlib,
+        [Switch]$msvcrt
     )
-
-    if (-not (ConsistencyCheck -x86:$x86 -woa:$woa -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole)) {
+    [bool]$isconpty = $conpty
+    if (!($conpty -or $winconsole)) {
+        $isconpty = $true
+    }
+    if (-not (ConsistencyCheck -release:$release -ascii:$ascii -reentrant:$reentrant -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole -x86:$x86 -aarch64:$aarch64 -msvcrt:$msvcrt)) {
         Write-Error "Inconsistent configuration"
         return
     }
 
     $Env:WNCDEBUG=""
     
-    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole))
+    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole))
     if (Test-Path -path $loc  -PathType Container) {
-        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -nodebug:$nodebug -x86:$x86 -woa:$woa -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -noconpty:$noconpty -winconsole:$winconsole))
+        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole))
         [string]$lib = (Join-Path $loc "lib")
         [string]$bin = (Join-Path $inst "bin")
         if ($dynamic) {
@@ -285,7 +297,7 @@ function Push-WincursesTestLocation {
             write-verbose "Entering directory test"
             set-location "test"
         }
-        $Env:WNCDEBUG=(Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86 -woa:$woa)
+        $Env:WNCDEBUG=(Get-MinGWDebugPath -msvcrt:$msvcrt -x86:$x86 -aarch64:$aarch64)
 
     } else {
         Write-Error "Build directory not found: $loc"

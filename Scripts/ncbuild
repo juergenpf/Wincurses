@@ -395,6 +395,7 @@ do_install() {
 
 if [ "$SCRIPTNAME" = "ncbuildinfo" ]; then
 cat <<EOF
+features=$(combine_features arg_features)
 prefix="$(get_config_prefix)"
 library_suffix="$(get_suffix)"
 extra_suffix="$(get_extra_suffix)"

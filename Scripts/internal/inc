@@ -143,12 +143,18 @@ function parse_args() {
 
     l_features="${#features[*]}"
     has_feature features "ascii" && has_feature features "wide" && _fail "Cannot specify both ascii and wide features"
-    if ! target_native; then
+    if ! has_feature features "ascii" && ! has_feature features "wide"; then
+        if [ $no_defaults -eq 0 ]; then
+            features["wide"]=1
+            l_features=1
+        fi
+    fi
+    if [ "${target[0]}" != "native" ]; then
         ! has_feature features "winconsole" && ! has_feature features "conpty" && [ $no_defaults -eq 0 ] && features["conpty"]=1 && l_features=$(expr $l_features + 1)
     fi
 
     l_runtime="${#runtime[*]}"
-    [ $l_runtime -eq 0 ] && ! target_native && runtime+=("ucrt") && l_runtime=1
+    [ $l_runtime -eq 0 ] && [ "${target[0]}" != "native" ] && runtime+=("ucrt") && l_runtime=1
     [ $l_runtime -gt 1 ] && _fail "Multiple runtimes specified: ${runtime[*]}"
 
     l_target="${#target[*]}"
