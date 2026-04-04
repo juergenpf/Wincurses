@@ -137,7 +137,7 @@ fi
 
 avoid_hostrun
 
-addopts=$(commong_addopts)
+addopts=$(common_addopts)
 
 feature_dynamic  && addopts+=" -dynamic"
 feature_termlib  && addopts+=" -termlib" 

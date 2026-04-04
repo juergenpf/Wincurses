@@ -73,7 +73,7 @@ get_options $@
 
 [ -f "$NC_CURRENT_JOB" ] && _fail "A batch build is already running"
 
-addopts=$(commong_addopts)
+addopts=$(common_addopts)
 
 feature_dynamic  && addopts+=" -dynamic"
 feature_termlib  && addopts+=" -termlib" 
