@@ -36,18 +36,30 @@ doall() {
             expected=8
         fi
     else
-        runtime_ucrt && rtoldcon="-msvcrt"
+        if runtime_ucrt; then
+            rtoldcon="-msvcrt"
+            while [ $# -gt 0 ]; do
+                case "$1" in
+                    -ucrt)
+                        ;;
+                    *)
+                        rtoldcon+=" $1"
+                        ;;
+                esac
+                shift
+            done
+        fi 
         target_aarch64 && nocon=1
         if feature_reentrant; then
             OPTARGS="$optargs -conpty" powerCall doit -interop -spfuncs -reentrant
-            [ $nocon -eq 0 ] && OPTARGS="$optargs -conpty -winconsole $rtoldcon" powerCall doit -interop -spfuncs -reentrant
-            [ $nocon -eq 0 ] && OPTARGS="$optargs -winconsole $rtoldcon" powerCall doit -interop -spfuncs -reentrant
+            [ $nocon -eq 0 ] && OPTARGS="$rtoldcon -conpty -winconsole" powerCall doit -interop -spfuncs -reentrant
+            [ $nocon -eq 0 ] && OPTARGS="$rtoldcon -winconsole" powerCall doit -interop -spfuncs -reentrant
             expected=16
             [ $nocon -eq 0 ] && expected=48
         else
             OPTARGS="$optargs -conpty" powerCall doit -interop -spfuncs
-            [ $nocon -eq 0 ] && OPTARGS="$optargs -conpty -winconsole $rtoldcon" powerCall doit -interop -spfuncs
-            [ $nocon -eq 0 ] && OPTARGS="$optargs -winconsole $rtoldcon" powerCall doit -interop -spfuncs
+            [ $nocon -eq 0 ] && OPTARGS="$rtoldcon -conpty -winconsole" powerCall doit -interop -spfuncs
+            [ $nocon -eq 0 ] && OPTARGS="$rtoldcon -winconsole" powerCall doit -interop -spfuncs
             expected=8
             [ $nocon -eq 0 ] && expected=24
         fi
