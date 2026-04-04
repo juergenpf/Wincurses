@@ -13,6 +13,15 @@
 # limitations under the License.
 
 function Get-WincursesDirectory {
+    <#
+    .SYNOPSIS
+        Returns the root directory of the Wincurses repository.
+    .DESCRIPTION
+        Returns the absolute path to the Wincurses repository root as configured
+        at install time. The path is substituted into the script during deployment.
+    .OUTPUTS
+        System.String. The absolute path to the repository root.
+    #>
     [CmdletBinding()]
     param()
     [string]$dir="@REPOPATH@"
@@ -238,19 +247,89 @@ function RelativeInstallDir {
 }
 
 function Push-WincursesTestLocation {
+    <#
+    .SYNOPSIS
+        Navigates into a Wincurses build output directory and configures the environment for testing.
+    .DESCRIPTION
+        Resolves the build and install directories for the specified Wincurses build configuration,
+        sets TERM and TERMINFO environment variables, optionally adds the library or binary directory
+        to PATH for dynamic builds, and pushes the build test directory onto the location stack.
+        Also sets the WNCDEBUG environment variable to the path of the appropriate MinGW debugger
+        (gdb for x86/x86_64, lldb for aarch64/Windows-on-ARM).
+
+        Use Pop-Location (or the 'popd' alias) to return from the test directory.
+        Use the 'ncdbg' alias to launch the debugger on a test program.
+    .PARAMETER release
+        Select the release build configuration. Default is debug.
+    .PARAMETER ascii
+        Select the 8-bit ASCII (narrow character) variant of the library.
+        Default is wide (Unicode) character support.
+    .PARAMETER reentrant
+        Select the reentrant (thread-safe) variant of the library.
+    .PARAMETER spfuncs
+        Select the build with sp-funcs (screen-pointer functions) support enabled.
+    .PARAMETER interop
+        Select the build with interop features enabled.
+    .PARAMETER conpty
+        Select the build with ConPTY console support.
+        Intended for Windows 10 version 1809 (build 17763) and later.
+        At least one of -conpty or -winconsole must be specified.
+        If neither is given, -conpty is assumed as the default.
+    .PARAMETER winconsole
+        Select the build with classic Windows Console API (screen-buffer) support.
+        Intended for Windows versions older than Windows 10 1809, including Windows 8 and earlier.
+        Can be combined with -conpty to select a build that supports both backends.
+    .PARAMETER x86
+        Select the x86 (i686, 32-bit) target architecture. Requires -msvcrt.
+    .PARAMETER aarch64
+        Select the aarch64 (ARM64, Windows-on-ARM) target architecture.
+        Implies UCRT runtime; cannot be combined with -msvcrt or -x86.
+    .PARAMETER dynamic
+        Add the build library or install bin directory to PATH so that
+        dynamically-linked test programs can find the ncurses DLLs.
+    .PARAMETER termlib
+        Select the terminfo-library-only build variant.
+    .PARAMETER msvcrt
+        Select the MSVCRT (legacy C runtime) variant. Default is UCRT.
+        Required for -x86 builds. Cannot be combined with -aarch64.
+    .EXAMPLE
+        pwct -conpty
+        Navigate to the default wide/debug/x86_64/UCRT/ConPTY build directory.
+    .EXAMPLE
+        pwct -conpty -winconsole -msvcrt -x86
+        Navigate to the combined ConPTY+winconsole build for x86 MSVCRT.
+    .EXAMPLE
+        pwct -conpty -aarch64
+        Navigate to the aarch64 (Windows-on-ARM) ConPTY build directory.
+    .EXAMPLE
+        pwct -conpty -release -wide -reentrant
+        Navigate to the wide, reentrant, release build directory with ConPTY support.
+    #>
     [CmdletBinding()]
     param(
+        [Parameter(HelpMessage="Select release build configuration (default: debug)")]
         [Switch]$release,
+        [Parameter(HelpMessage="Select ASCII (narrow, 8-bit) character variant (default: wide)")]
         [Switch]$ascii,
+        [Parameter(HelpMessage="Select the reentrant (thread-safe) library variant")]
         [Switch]$reentrant,
+        [Parameter(HelpMessage="Enable sp-funcs (screen-pointer functions) support")]
         [Switch]$spfuncs,
+        [Parameter(HelpMessage="Enable interop features")]
         [Switch]$interop,
+        [Parameter(HelpMessage="Select ConPTY backend (Windows 10 1809+). Default when neither -conpty nor -winconsole is given.")]
         [Switch]$conpty,
+        [Parameter(HelpMessage="Select classic Windows Console API backend (legacy Windows, pre-Win10 1809). Can be combined with -conpty.")]
         [Switch]$winconsole,
+        [Parameter(HelpMessage="Select x86 (i686, 32-bit) target architecture. Requires -msvcrt.")]
         [Switch]$x86,
+        [Parameter(HelpMessage="Select aarch64 (ARM64, Windows-on-ARM) target architecture. Implies UCRT.")]
         [Switch]$aarch64,
+        [Parameter(HelpMessage="Add library/bin directory to PATH for dynamic builds")]
         [Switch]$dynamic,
+        [Parameter(HelpMessage="Select the terminfo-library-only build variant")]
         [Switch]$termlib,
+        [Parameter(HelpMessage="Select MSVCRT runtime (default: UCRT). Required for -x86. Cannot be combined with -aarch64.")]
         [Switch]$msvcrt
     )
     [bool]$isconpty = $conpty
@@ -305,8 +384,24 @@ function Push-WincursesTestLocation {
 }
 
 function Start-MinGWDebug {
+    <#
+    .SYNOPSIS
+        Launches the MinGW debugger (gdb or lldb) on the specified program.
+    .DESCRIPTION
+        Uses the WNCDEBUG environment variable set by Push-WincursesTestLocation (pwct)
+        to locate the appropriate MinGW debugger for the current build configuration
+        and starts it with the given program as the target.
+        Use the 'ncdbg' alias as a shorthand.
+    .PARAMETER Program
+        Path to the program to debug. Typically a test executable in the current
+        build test directory.
+    .EXAMPLE
+        ncdbg .\ncurses.exe
+        Launch the debugger on ncurses.exe in the current directory.
+    #>
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory, Position=0, HelpMessage="Path to the program to debug")]
         [string]$Program
     )
     $dbgPath = $Env:WNCDEBUG

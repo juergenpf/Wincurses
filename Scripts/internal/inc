@@ -138,7 +138,7 @@ function parse_args() {
     [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
     
     l_config="${#config[*]}"
-    [ $l_config -eq 0 ] && config+=("debug") && l_config=1
+    [ $l_config -eq 0 ] && [ $no_defaults -eq 0 ] && config+=("debug") && l_config=1
     [ $l_config -gt 1 ] && _fail "Multiple build configurations specified: ${config[*]}"
 
     l_features="${#features[*]}"
@@ -154,11 +154,11 @@ function parse_args() {
     fi
 
     l_runtime="${#runtime[*]}"
-    [ $l_runtime -eq 0 ] && [ "${target[0]}" != "native" ] && runtime+=("ucrt") && l_runtime=1
+    [ $l_runtime -eq 0 ] && [ "${target[0]}" != "native" ] && [ $no_defaults -eq 0 ] && runtime+=("ucrt") && l_runtime=1
     [ $l_runtime -gt 1 ] && _fail "Multiple runtimes specified: ${runtime[*]}"
 
     l_target="${#target[*]}"
-    [ $l_target -eq 0 ] && target+=("x86_64") && l_target=1
+    [ $l_target -eq 0 ] && [ $no_defaults -eq 0 ] && target+=("x86_64") && l_target=1
     [ $l_target -gt 1 ] && _fail "Multiple targets specified: ${target[*]}"
 
     l_options="${#options[*]}"
@@ -282,6 +282,19 @@ feature_termlib() {
 feature_dynamic() {
     [ "${arg_features["dynamic"]+_}" ] && return 0
     return 1
+}
+
+common_addopts() {
+    local addopts=
+    local cfg=$(get_config)
+    local rt=$(get_runtime)
+    local tgt=$(get_target)
+    
+    [ -n "$cfg" ] && addopts+=" -$cfg"
+    [ -n "$rt" ] && addopts+=" -$rt"
+    [ -n "$tgt" ] && addopts+=" -$tgt" 
+    echo "${addopts#Substr"${addopts%%[![:space:]]*}"}"
+    return 0
 }
 #
 # -----------------------------------------------------------------------------------

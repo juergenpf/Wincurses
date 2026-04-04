@@ -69,6 +69,7 @@ forbidden_feature() {
 }
 
 get_options() {
+    local l_runtime=0
     parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters -no-defaults "$@"
     [ $? -ne 0 ] && _fail "Error parsing options"
 
@@ -114,6 +115,9 @@ EOF
         exit 0
     }
 
+    l_runtime="${#runtime[*]}"
+    [ $l_runtime -gt 0 ] && fail "Runtime selection will be handled by $SCRIPTNAME, please do not specify runtime options when using $SCRIPTNAME."
+    
     forbidden_feature wide
     forbidden_feature ascii
     forbidden_feature winconsole
@@ -133,9 +137,7 @@ fi
 
 avoid_hostrun
 
-addopts="-$(get_config)"
-addopts+=" -$(get_runtime)"
-addopts+=" -$(get_target)"
+addopts=$(commong_addopts)
 
 feature_dynamic  && addopts+=" -dynamic"
 feature_termlib  && addopts+=" -termlib" 
