@@ -186,7 +186,7 @@ _show() {
         xzcat "${name}.${ext}.xz" | $pager
     else
         if [ -f "${name}.${ext}" ]; then
-            cat "${name}.${ext}" | $pager
+            $pager "${name}.${ext}"
         else
             _fail "No ${ext} file found for job ID $_jobid - it can take a few moments until these files are available after job creation."
         fi
