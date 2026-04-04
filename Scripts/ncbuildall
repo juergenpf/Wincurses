@@ -36,7 +36,7 @@ doall() {
             expected=8
         fi
     else
-        if runtime_ucrt; then
+        if ! runtime_mscvrt; then
             rtoldcon="-msvcrt"
             while [ $# -gt 0 ]; do
                 case "$1" in
