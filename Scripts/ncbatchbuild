@@ -132,10 +132,11 @@ get_options() {
 }
 
 in_container && _fail "This script is not meant to be run inside the devcontainer"
-[ -f "$NC_CURRENT_JOB" ] && _fail "A batch build is already running"
 
 get_options $@
 [ $? -ne 0 ] && _fail "Invalid options: $err"
+
+[ -f "$NC_CURRENT_JOB" ] && _fail "A batch build is already running"
 
 addopts=
 ! opt_debug     && addopts+=" --nodebug"

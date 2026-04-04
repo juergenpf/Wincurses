@@ -194,6 +194,7 @@ _show() {
 }
 
 _clean() {
+    [ -f "$NC_CURRENT_JOB" ] && _fail "There is a running job, cannot run clean. Please wait until the job is finished and try again."
     rm -f ${NC_BATCH_PREFIX}-*.job
     rm -f ${NC_BATCH_PREFIX}-*.log
     rm -f ${NC_BATCH_PREFIX}-*.out
