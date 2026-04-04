@@ -1,306 +1,407 @@
 # See License.md in the project root for license information.
-# Include file with common settings and functions for most scripts
-# Assumes, that the parent script has set the varibale SCRIPTS to 
-# the directory containing the scripts.
-SCRIPTNAME=$(basename $0)
-PROJROOT=$(cd $SCRIPTS/.. && pwd)
-abiversion=6
-#
-# Subdirectory prefixes for MSYS2 builds
-MINGW64_PREFIX=mingw64        # x86_64 gcc msvcrt
-MINGW32_PREFIX=mingw32        # i686 gcc msvcrt
-UCRT64_PREFIX=ucrt64          # x86_64 gcc ucrt
-CLANG64_PREFIX=clang64        # x86_64 clang ucrt
-CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
-NATIVE_PREFIX=usr             # Native Linux build
+. $SCRIPTS/internal/common
 
-_relative_instroot=inst
-_relative_buildroot=build
+declare arg_config=()
+declare -A arg_features=()
+declare arg_runtime=()
+declare arg_target=()
+declare -A arg_options=()
+declare -A arg_parameters=()
 
-_opt_verbose=0
-_opt_native=0
-_logfile=
+function has_feature() {
+    local -n _features=$1
+    local feature=$2
+    [ ${_features[$feature]+_} ] && return 0
+    return 1
+}
 
-__is_wsl2=0
-uname -r | grep -q WSL2
-[ $? -eq 0 ] && __is_wsl2=1
+function combine_features() {
+    local -n _features=$1
+    local _keys="${!_features[*]}"
+    local combined= 
+    local key
+    for key in $_keys; do
+        combined="$combined -$key"
+    done
+    echo $combined
+}
 
-exec 3>&2
+function has_option() {
+    local -n _options=$1
+    local option=$2
+    [ ${_options[$option]+_} ] && return 0
+    return 1
+}
 
-_log() {
-    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
-    if [ -n "$_logfile" ]; then
-        echo "[$timestamp] $@" >> "$_logfile"
-    else   
-        echo "[$timestamp] $@" >&3
+function parse_args() {
+    local -n config=$1
+    local -n features=$2
+    local -n runtime=$3
+    local -n target=$4
+    local -n options=$5
+    local -n parameters=$6
+    local err=
+    local no_defaults=0
+    local l_config
+    local l_features
+    local l_runtime
+    local l_target
+    local l_options
+
+    shift 6
+    if [ "$1" = "-no-defaults" ]; then
+        no_defaults=1
+        shift
     fi
-}
 
-_trace() {
-    if [ $_opt_verbose -ne 0 ]; then
-        echo "TRACE: $@" >&2
+    while [[ $# -gt 0 ]]
+    do
+	    case "$1" in
+	        -ascii)
+                features["ascii"]=1
+	            ;;
+            -wide)
+                features["wide"]=1
+	            ;;
+            -reentrant)
+                features["reentrant"]=1
+	            ;;
+            -winconsole)
+                features["winconsole"]=1
+                ;;
+            -conpty)
+                features["conpty"]=1
+                ;;
+            -interop)
+                features["interop"]=1
+                ;;
+            -spfuncs)
+                features["spfuncs"]=1
+                ;;
+            -termlib)
+                features["termlib"]=1
+                ;;
+            -dynamic)
+                features["dynamic"]=1
+                ;;
+            -native)
+                target+=("native")
+                ;;
+            -x86_64)
+                target+=("x86_64")
+                ;;
+            -aarch64)
+                target+=("aarch64")
+                ;;
+            -x86)
+                target+=("x86")
+                ;;
+            -msvcrt)
+                runtime+=("msvcrt")
+                ;;
+            -ucrt)
+                runtime+=("ucrt")
+                ;;    
+            -debug)
+                config+=("debug")
+                ;;
+            -release)
+                config+=("release")
+                ;;
+	        -log)
+		        shift
+                parameters["log"]="$1"
+		        ;;
+            -c|-clean)
+                options["clean"]=1
+                ;;
+            -v|-verbose)
+                options["verbose"]=1
+                ;;
+            -h|-help)
+                options["help"]=1
+                return 0
+                ;;
+	        --)
+		        shift
+		        break
+		        ;;
+            -*)
+                _fail "Unknown option: $1"
+                ;;
+	        *)
+		        err="$err $1"
+		        ;;
+	    esac
+        shift
+    done
+    [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
+    
+    l_config="${#config[*]}"
+    [ $l_config -eq 0 ] && config+=("debug") && l_config=1
+    [ $l_config -gt 1 ] && _fail "Multiple build configurations specified: ${config[*]}"
+
+    l_features="${#features[*]}"
+    has_feature features "ascii" && has_feature features "wide" && _fail "Cannot specify both ascii and wide features"
+    if ! target_native; then
+        ! has_feature features "winconsole" && ! has_feature features "conpty" && [ $no_defaults -eq 0 ] && features["conpty"]=1 && l_features=$(expr $l_features + 1)
     fi
+
+    l_runtime="${#runtime[*]}"
+    [ $l_runtime -eq 0 ] && ! target_native && runtime+=("ucrt") && l_runtime=1
+    [ $l_runtime -gt 1 ] && _fail "Multiple runtimes specified: ${runtime[*]}"
+
+    l_target="${#target[*]}"
+    [ $l_target -eq 0 ] && target+=("x86_64") && l_target=1
+    [ $l_target -gt 1 ] && _fail "Multiple targets specified: ${target[*]}"
+
+    l_options="${#options[*]}"
+
+    set_logfile parameters
+    _nc_verbose=${options["verbose"]+1}
+
+    return 0
 }
 
-_fail() {
-    _log "ERROR: $@"
-    exit 1
+get_config() {
+    echo "${arg_config[0]}"
+    return 0
 }
 
-not_implemented() {
-    _log "Not implemented: $@"
-    exit 1 
+config_debug() {
+    [ "${arg_config[0]}" = "debug" ] && return 0
+    return 1
+}
+
+config_release() {
+    [ "${arg_config[0]}" = "release" ] && return 0
+    return 1
+}
+
+get_target() {
+    echo "${arg_target[0]}"
+    return 0
+}
+
+target_native() {
+    [ "${arg_target[0]}" = "native" ] && return 0
+    return 1
+}   
+
+target_x86_64() {
+    [ "${arg_target[0]}" = "x86_64" ] && return 0
+    return 1
+}
+
+target_aarch64() {
+    [ "${arg_target[0]}" = "aarch64" ] && return 0
+    return 1
+}
+
+target_x86() {
+    [ "${arg_target[0]}" = "x86" ] && return 0
+    return 1
 }
 
 opt_verbose() {
-    [ $_opt_verbose -ne 0 ] && return 0
-    return 1 
-}
-
-opt_native() {
-    [ $_opt_native -ne 0 ] && return 0
-    return 1 
-}
-
-# Test if we are running in a container (Docker, Podman, etc.) by checking 
-# for the presence of the /.dockerenv file.
-in_container() {
-    [ -f /.dockerenv ] && return 0
+    [ "${arg_options["verbose"]+_}" ] && return 0
     return 1
 }
 
-# Test if we are running in WSL2 by checking the kernel version for the presence of "WSL2".
-in_wsl2() {
-    [ $__is_wsl2 -ne 0 ] && return 0
+opt_clean() {
+    [ "${arg_options["clean"]+_}" ] && return 0
     return 1
 }
 
-maybe_parallels_desktop() 
-{
-    [ -f "${PROJROOT}/.prlpath" ] && return 0
+opt_help() {
+    [ "${arg_options["help"]+_}" ] && return 0
     return 1
 }
 
+get_runtime() {
+    echo "${arg_runtime[0]}"
+    return 0
+}
 
-is_native_darwin() {
-    [ "$(uname -s)" = "Darwin" ] && return 0
+runtime_ucrt() {
+    [ "${arg_runtime[0]}" = "ucrt" ] && return 0
     return 1
 }
 
-is_native_darwin_arm() {
-    if is_native_darwin; then
-        [ "$(uname -m)" = "arm64" ] && return 0
-    fi
+runtime_msvcrt() {
+    [ "${arg_runtime[0]}" = "msvcrt" ] && return 0
     return 1
 }
 
-is_native_darwin_intel() {
-    if is_native_darwin; then
-	    [ "$(uname -m)" = "x86_64" ] && return 0
-    fi
+feature_ascii() {
+    [ "${arg_features["ascii"]+_}" ] && return 0
+    return 1
+}
+
+feature_wide() {
+    [ "${arg_features["wide"]+_}" ] && return 0
+    return 1
+}
+
+feature_reentrant() {
+    [ "${arg_features["reentrant"]+_}" ] && return 0
+    return 1
+}
+
+feature_winconsole() {
+    [ "${arg_features["winconsole"]+_}" ] && return 0
+    return 1
+}
+
+feature_conpty() {
+    [ "${arg_features["conpty"]+_}" ] && return 0
+    return 1
+}
+
+feature_interop() {
+    [ "${arg_features["interop"]+_}" ] && return 0
+    return 1
+}
+
+feature_spfuncs() {
+    [ "${arg_features["spfuncs"]+_}" ] && return 0
+    return 1
+}
+
+feature_termlib() {
+    [ "${arg_features["termlib"]+_}" ] && return 0
+    return 1
+}
+
+feature_dynamic() {
+    [ "${arg_features["dynamic"]+_}" ] && return 0
     return 1
 }
 #
 # -----------------------------------------------------------------------------------
 #
 is_default_build() {
-    source "${SCRIPTS}/internal/function_prolog"
     local _nondefault_opts=0
 
-    [ $_widec -eq 0 ]       && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_reentrant -ne 0 ]   && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_winconsole -ne 0 ]  && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_spfuncs -ne 0 ]     && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_native -ne 0 ]      && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_libseparate -ne 0 ] && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_ucrt -eq 0 ]        && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_debug -eq 0 ]       && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_woa -ne 0 ]         && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_x86 -ne 0 ]         && _nondefault_opts=$(expr $_nondefault_opts + 1)
-    [ $_conpty -eq 0 ]      && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    ! target_x86_64    && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    ! runtime_ucrt     && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    ! config_debug     && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    ! feature_wide     && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    ! feature_conpty   && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    feature_reentrant  && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    feature_winconsole && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    feature_spfuncs    && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    feature_interop    && _nondefault_opts=$(expr $_nondefault_opts + 1)
+    feature_termlib    && _nondefault_opts=$(expr $_nondefault_opts + 1)
 
     [ $_nondefault_opts -ne 0 ] && return 1
     return 0
 }
 
 common_consistency_checks() {
-    source "${SCRIPTS}/internal/function_prolog"
-
-    [ $_ucrt -eq 0 ]     && [ $_native -ne 0 ] && _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
-    [ $_x86 -ne 0 -o $_woa -ne 0 ] && [ $_native -ne 0 ] && _fail "--x86 or --woa are specific for Windows cross builds and cannot be used for native builds." 
-    [ $_x86 -ne 0 ] && [ $_woa -ne 0 ] &&  _fail "x86 and WOA build options are mutually exclusive."
-    [ $_x86 -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "x86 builds for UCRT are not supported."
-    [ $_woa -ne 0 ] && [ $_ucrt -eq 0 ] && _fail "--woa and --msvcrt are not compatible. Windows on ARM implies ucrt"
-    # [ $_native -eq 0 ] && [ $_winconsole -ne 0 ] && [ $_ucrt -ne 0 ] && _fail "Builds for legacy Windows with term-driver support require --msvcrt as C runtime library"
-    # [ $_winconsole -ne 0 ] && [ $_libseparate -ne 0 ] && _fail "--winconsole builds are not supported with --libseparate"
-    # [ $_winconsole -ne 0 ] && [ $_spfuncs -eq 0 ] && _fail "Term-driver builds require --spfuncs"
-    [ $_native -eq 0 ] && [ $_conpty -eq 0 ] && [ $_winconsole -eq 0 ] && _fail "Cross builds must use ConPTY or Windows Console API"
+    runtime_msvcrt && target_native && _fail "--msvcrt is a Windows specific option and cannot be used for native builds."
+    runtime_ucrt   && target_native && _fail "--ucrt is a Windows specific option and cannot be used for native builds."
+    feature_conpty && target_native && _fail "--conpty is a Windows specific option and cannot be used for native builds."
+    feature_winconsole && target_native && _fail "--winconsole is a Windows specific option and cannot be used for native builds."
+    target_x86 && runtime_ucrt && _fail "x86 builds for UCRT are not supported."
+    target_aarch64 && runtime_msvcrt && _fail "--woa and --msvcrt are not compatible. Windows on ARM implies ucrt."
+    ! target_native && ! feature_conpty && ! feature_winconsole && _fail "Cross builds must use ConPTY or Windows Console APIor both."
     return 0   
 }
 
 get_config_prefix() {
-    source "${SCRIPTS}/internal/function_prolog"
-   local prefix="$UCRT64_PREFIX"
- 
-    common_consistency_checks "${_args[@]}"
-
-    [ $_woa -ne 0 ]    && prefix="${CLANG64ARM_PREFIX}"
-    [ $_native -ne 0 ] && prefix="${NATIVE_PREFIX}" 
-
-    if [ $_x86 -ne 0 ]; then
-        if [ $_ucrt -eq 0 ]; then
-            prefix="$MINGW32_PREFIX"
-        else
-            _fail "--x86 requires --msvcrt"
-        fi
-    else 
-        if [ $_ucrt -eq 0 ]; then
-            prefix="$MINGW64_PREFIX"
-        fi
-    fi 
-    echo "$prefix"
-    return 0
+    target_x86_64 && runtime_ucrt && echo "$UCRT64_PREFIX" && return 0
+    target_x86_64 && runtime_msvcrt && echo "$MINGW64_PREFIX" && return 0
+    target_x86 && runtime_msvcrt && echo "$MINGW32_PREFIX" && return 0
+    target_x86 && runtime_ucrt && _fail "--x86 requires -msvcrt"
+    target_aarch64  && echo "${CLANG64ARM_PREFIX}" && return 0
+    target_native   && echo "${NATIVE_PREFIX}" && return 0
+    return 1
 }
 
 get_target_arch() {
-    source "${SCRIPTS}/internal/function_prolog"
-    local arch=x86_64
-
-    common_consistency_checks "${_args[@]}"
-
-    [ $_woa -ne 0 ] && arch="aarch64"
-    [ $_x86 -ne 0 ] && arch="i686"
-    [ $_native -ne 0 ] && arch="$(uname -m)"
-
-    echo "$arch"
-    return 0
+    target_x86_64 && echo "x86_64" && return 0
+    target_aarch64 && echo "aarch64" && return 0
+    target_x86 && echo "i686" && return 0
+    target_native && echo "$(uname -m)" && return 0
+    return 1
 }
 
 base_os_prefix() {
-    source "${SCRIPTS}/internal/function_prolog"
-    local prefix=WindowsCross
-    
-    common_consistency_checks "${_args[@]}"
-
-    if [ $_native -ne 0 ]; then
+    local prefix=WindowsCross    
+    if target_native; then
         prefix=$(uname -s)
         prefix=${prefix,,}
     fi
     echo "$prefix"
+    return 0
 }
 
 build_prefix() {
-    source "${SCRIPTS}/internal/function_prolog"
     local prefix=debug
-
-    local arch=$(get_target_arch "${_args[@]}")
-    local base=$(base_os_prefix  "${_args[@]}")
-
-    common_consistency_checks "${_args[@]}"
-    
-    [ $_debug -eq 0 ] && prefix=release
+    local arch=$(get_target_arch)
+    local base=$(base_os_prefix)
+    config_release && prefix=release
     echo "${prefix}/${base}/${arch}"
+    return 0
 }
 
 get_suffix() {
-    source "${SCRIPTS}/internal/function_prolog"
     local sufft=
-    local suffw=w
+    local suffw=
 
-    common_consistency_checks "${_args[@]}"
-
-    [ $_widec -eq 0 ] && suffw=
-    [ $_reentrant -ne 0 ] && sufft=t
+    feature_wide && suffw=w
+    feature_reentrant && sufft=t
 
     echo "${sufft}${suffw}"
+    return 0
 }
 
 get_extra_suffix() {
-    source "${SCRIPTS}/internal/function_prolog"
     local s_suff=
     local i_suff=
     local p_suff=
     local c_suff=
 
-    common_consistency_checks "${_args[@]}"
-
-    [ $_interop -ne 0 ] && i_suff=i
-    [ $_spfuncs -ne 0 ] && s_suff=s
-    if ! opt_native; then
-        [ $_conpty -ne 0 ]     && p_suff=p
-        [ $_winconsole -ne 0 ] && c_suff=c
+    feature_spfuncs && s_suff=s
+    feature_interop && i_suff=i
+    if ! target_native; then
+        feature_conpty && p_suff=p
+        feature_winconsole && c_suff=c
     fi
     echo "${s_suff}${i_suff}${p_suff}${c_suff}"
-}
-
-relative_builddir() {
-    local suffix=$(get_suffix "$@")$(get_extra_suffix "$@")
-    local pre=$(build_prefix "$@")
-    local config_prefix=$(get_config_prefix "$@")
-    common_consistency_checks "$@"
-    echo "${pre}/nc${suffix}/${config_prefix}"
-}
-
-relative_installbase() {
-    local suffix=$(get_suffix "$@")$(get_extra_suffix "$@")
-    local pre=$(build_prefix "$@")
-    common_consistency_checks "$@"
-    echo "${pre}/nc${suffix}"
-}
-
-relative_installdir() {
-    local config_prefix=$(get_config_prefix "$@")
-    common_consistency_checks "$@"
-    echo "$(relative_installbase "$@")/${config_prefix}"
-}
-
-has_clean() {
-    source "${SCRIPTS}/internal/function_prolog"
-    common_consistency_checks "${_args[@]}"
-    [ $_clean -ne 0 ] && return 0
-    return 1
-}
-
-get_host_bht() {
-    source "${SCRIPTS}/_function_prolog"
-    local host_bht="x86_64-w64-mingw32ucrt"
-
-    common_consistency_checks "${_args[@]}"
-
-    [ $_woa -ne 0 ] && host_bht="aarch64-w64-mingw32"
-    if [ $_ucrt -eq 0 ]; then
-        if [ $_x86 -ne 0 ]; then
-            host_bht="i686-w64-mingw32"
-        else
-            host_bht="x86_64-w64-mingw32"
-        fi
-    fi
-    echo "$host_bht"
     return 0
 }
 
-avoid_hostrun() {
-    if ! in_container; then
-        if [ "$(uname -s)" = "Linux" ]; then
-            _log "It is recommended to run this script in the devcontainer as it produce the same result there in a controlled environment"
-            exit 0
-        fi
-    fi
+relative_builddir() {
+    local suffix=$(get_suffix)$(get_extra_suffix)
+    local pre=$(build_prefix)
+    local config_prefix=$(get_config_prefix)
+    common_consistency_checks
+    echo "${pre}/nc${suffix}/${config_prefix}"
+    return 0
 }
 
-powerCall() {
-    local func=$1
-    shift
-    local opts=("$@")
-    local n=${#opts[@]}
-
-    for (( mask=0; mask < (1<<n); mask++ )); do
-        local combo=()
-        for (( i=0; i<n; i++ )); do
-            (( mask & (1<<i) )) && combo+=("${opts[$i]}")
-        done
-        _log "$func ${combo[*]} $OPTARGS"
-        "$func" "${combo[@]}" $OPTARGS
-    done
+relative_installbase() {
+    local suffix=$(get_suffix)$(get_extra_suffix)
+    local pre=$(build_prefix)
+    common_consistency_checks
+    echo "${pre}/nc${suffix}"
+    return 0
 }
 
+relative_installdir() {
+    local config_prefix=$(get_config_prefix)
+    common_consistency_checks
+    echo "$(relative_installbase)/${config_prefix}"
+    return 0
+}
+
+get_host_bht() {
+    target_x86_64 && runtime_ucrt && echo "x86_64-w64-mingw32ucrt" && return 0
+    target_x86_64 && runtime_msvcrt && echo "x86_64-w64-mingw32" && return 0
+    target_aarch64 && echo "aarch64-w64-mingw32" && return 0
+    target_x86 && runtime_msvcrt && echo "i686-w64-mingw32" && return 0
+    target_x86 && runtime_ucrt && _fail "-x86 requires -msvcrt"
+    return 1
+}

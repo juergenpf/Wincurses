@@ -9,6 +9,7 @@ _log "Cleaning build and install directories..."
 rm -rf inst build
 mkdir build
 mkdir inst
+mkdir logs 2>/dev/null
 popd > /dev/null
 
 exit 0

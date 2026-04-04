@@ -1,0 +1,119 @@
+# See License.md in the project root for license information.
+# Include file with common settings and functions for most scripts
+SCRIPTNAME=$(basename $0)
+PROJROOT=$(cd $SCRIPTS/.. && pwd)
+abiversion=6
+#
+# Subdirectory prefixes for MSYS2 builds
+MINGW64_PREFIX=mingw64        # x86_64 gcc msvcrt
+MINGW32_PREFIX=mingw32        # i686 gcc msvcrt
+UCRT64_PREFIX=ucrt64          # x86_64 gcc ucrt
+CLANG64_PREFIX=clang64        # x86_64 clang ucrt
+CLANG64ARM_PREFIX=clangarm64  # aarch64 clang ucrt
+NATIVE_PREFIX=usr             # Native Linux build
+
+_relative_instroot=inst
+_relative_buildroot=build
+_nc_logfile=
+_nc_verbose=0
+
+__is_wsl2=0
+uname -r | grep -q WSL2
+[ $? -eq 0 ] && __is_wsl2=1
+
+exec 3>&2
+
+function set_logfile() {
+    local -n _parameters=$1
+    if [[ -n "${_parameters[log]}" ]]; then
+        _nc_logfile=$(realpath "${_parameters[log]}")
+    fi
+}   
+
+_log() {
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    if [[ -n "$_nc_logfile" ]]; then
+        echo "[$timestamp] $@" >> "$_nc_logfile"
+    else   
+        echo "[$timestamp] $@" >&3
+    fi
+}
+
+_trace() {
+    if [[ $_nc_verbose -ne 0 ]]; then
+        echo "TRACE: $@" >&2
+    fi
+}
+
+_fail() {
+    _log "ERROR: $@"
+    exit 1
+}
+
+not_implemented() {
+    _log "Not implemented: $@"
+    exit 1 
+}
+
+# Test if we are running in a container (Docker, Podman, etc.) by checking 
+# for the presence of the /.dockerenv file.
+in_container() {
+    [ -f /.dockerenv ] && return 0
+    return 1
+}
+
+# Test if we are running in WSL2 by checking the kernel version for the presence of "WSL2".
+in_wsl2() {
+    [ $__is_wsl2 -ne 0 ] && return 0
+    return 1
+}
+
+maybe_parallels_desktop() 
+{
+    [ -f "${PROJROOT}/.prlpath" ] && return 0
+    return 1
+}
+
+
+is_native_darwin() {
+    [ "$(uname -s)" = "Darwin" ] && return 0
+    return 1
+}
+
+is_native_darwin_arm() {
+    if is_native_darwin; then
+        [ "$(uname -m)" = "arm64" ] && return 0
+    fi
+    return 1
+}
+
+is_native_darwin_intel() {
+    if is_native_darwin; then
+	    [ "$(uname -m)" = "x86_64" ] && return 0
+    fi
+    return 1
+}
+
+avoid_hostrun() {
+    if ! in_container; then
+        if [[ "$(uname -s)" = "Linux" ]]; then
+            _log "It is recommended to run this script in the devcontainer as it produce the same result there in a controlled environment"
+            exit 0
+        fi
+    fi
+}
+
+powerCall() {
+    local func=$1
+    shift
+    local opts=("$@")
+    local n=${#opts[@]}
+
+    for (( mask=0; mask < (1<<n); mask++ )); do
+        local combo=()
+        for (( i=0; i<n; i++ )); do
+            (( mask & (1<<i) )) && combo+=("${opts[$i]}")
+        done
+        "$func" "${combo[@]}" $OPTARGS
+    done
+}

@@ -5,112 +5,94 @@ SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/internal/inc
 
 get_options() {
-    local err=
-    while [[ $# -gt 0 ]]
-    do
-	    case "$1" in
-	        -a|--ascii)
-	            ;;
-            -t|--reentrant)
-	            ;;
-            -W|--winconsole)
-                ;;    
-            -P|--noconpty)
-                ;;
-            -i|--interop)
-                ;;
-            -s|--spfuncs)
-                ;;
-            -N|--native)
-                _opt_native=1
-                ;;
-            -l|--libseparate)
-                ;;
-            -m|--msvcrt)
-	            ;;
-            -n|--nodebug)
-                ;;
-            -c|--clean)
-                ;;
-            -w|--woa)
-                ;;
-            -x|--x86)
-                ;;
-            -v|--verbose)
-                _opt_verbose=1
-                ;;
-	        --log)
-		        shift
-                _logfile="$1"
-		        ;;
-            -d|--dynamic)
-                ;;
-            -h|--help)
-                echo "Usage: $0 [options]"
-                echo "Options:"
-                echo "  -a, --ascii           Build ASCII version (disable wide character support)"
-                echo "  -t, --reentrant       Build reentrant version"
-                echo "  -W, --winconsole      Build with winconsole support (intended for Windows older than Windows 10 1809)"
-                echo "  -P, --noconpty        Build without ConPTY support (intended for Windows older than Windows 10 1809)"
-                echo "  -i, --interop         Build with interop features enabled"
-                echo "  -s, --spfuncs         Build with sp-funcs support."
-                echo "  -N, --native          Build for native execution in Linux or the host environment"
-                echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT"
-                echo "  -w, --woa             Build for Windows on ARM (WOA) with UCRT"
-                echo "  -x, --x86             Build for x86 (i686) with MSVCRT"
-                echo "  -l, --libseparate     Build terminfo library separately from ncurses"
-                echo "  -d, --dynamic         Build with shared libraries (default is static)"
-                echo "  -n, --nodebug         Build without debug symbols and features"
-                echo "  -c, --clean           Clean build and install directories before building"
-                echo "  -v, --verbose         Enable verbose output"
-                echo " --log <file>           Log verbose output to the specified file"
-                echo "  -h, --help            Show this help message and exit"
-                shift
-                exit 0
-                ;;
-	        --)
-		        shift
-		        break
-		        ;;
-            -*)
-                _fail "Unknown option: $1"
-                ;;
-	        *)
-		        err="$err $1"
-		        ;;
-	    esac
-        shift
-    done
-    [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
+    parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters "$@"
+    [ $? -ne 0 ] && _fail "Error parsing options"
+
+    opt_help && {
+        cat << EOF
+Usage: $SCRIPTNAME [options]
+Options:
+
+  Build configuration (default: debug): Only one of these options can be specified.
+
+    -debug               Build debug version (This is the default)
+    -release             Build release version
+
+  Character width configuration (default: wide): Only one of these options can be specified.
+
+    -ascii               Build ASCII version (8-Bit characters only)
+    -wide                Build wide character version (Unicode support, this is the default)
+
+  Reentrancy options (for improved thread safetyness)
+
+    -reentrant           Build reentrant version (improved thread safety)
+
+  Target architecture (default: x86_64): Only one of these options can be specified.
+                         When not -native, this is the architeture of the Windows OS being targeted.  
+
+    -x86_64              Build for x86_64 (amd64) architecture
+    -aarch64             Build for aarch64 (arm64) architecture, Windows on ARM
+    -x86                 Build for x86 (i686) architecture
+    -native              Build for native execution in Linux or the host environment
+
+  Windows console support (default: ConPTY): Only one of these options can be specified.
+                         This is only allowd, when building for Windows. 
+
+    -conpty              Build with ConPTY support (intended for Windows 10 1809 and later)   
+    -winconsole          Build with winconsole support (intended for Windows older than Windows 10 1809)
+
+  C-Runtime of the Windows target OS (default: UCRT): Only one of these options can be specified.
+                         This is only allowd, when building for Windows.
+
+    -ucrt                Build with UCRT runtime
+    -msvcrt              Build with MSVCRT instead of UCRT
+
+  Internal library configuration features:
+
+    -interop             Build with interop features enabled
+    -spfuncs             Build with sp-funcs support.
+    -termlib             Build terminfo library only
+    -dynamic             Build with shared libraries (default is static)
+
+  Other options:
+  
+    -log <file>          Log verbose output to the specified file
+    -c|-clean            Clean build and install directories before building
+    -v|-verbose          Enable verbose output
+    -h|-help             Show this help message and exit
+EOF
+        exit 0
+    }
+
     return 0
 }
 
 get_options "$@"
 [ $? -ne 0 ]  && _fail "Error parsing options"
 
-if ! opt_native; then
+if ! target_native; then
     in_container || _fail "Not running in devcontainer." 
 fi
 
 # avoid_hostrun
 
-if is_default_build "$@"; then
+if is_default_build; then
     _trace "Running with default settings (Windows cross build with widec support, UCRT target, debug build)"
 fi
 
-common_consistency_checks "$@"
+common_consistency_checks
 
-_trace "Build prefix: $(build_prefix "$@")"
-_trace "Configuration prefix: $(get_config_prefix "$@")"
-_trace "Library suffix: $(get_suffix "$@")"
-_trace "Relative build directory: $(relative_builddir "$@")"
-_trace "Relative install base: $(relative_installbase "$@")"
-_trace "Relative install directory: $(relative_installdir "$@")"
+_trace "Build prefix: $(build_prefix)"
+_trace "Configuration prefix: $(get_config_prefix)"
+_trace "Library suffix: $(get_suffix)"
+_trace "Relative build directory: $(relative_builddir)"
+_trace "Relative install base: $(relative_installbase)"
+_trace "Relative install directory: $(relative_installdir)"
 
 build_bht=$(uname -m)-linux-gnu
 host_bht=
-if ! opt_native; then
-    host_bht=$(get_host_bht "$@")
+if ! target_native; then
+    host_bht=$(get_host_bht)
     env_file=$PROJROOT/.devcontainer/crossenvs/${host_bht}.env
     if [ -f "$env_file" ]; then
         _trace "Sourcing cross build environment from: ${env_file}"
@@ -148,7 +130,7 @@ gen_gdbinit() {
     do
         echo "directory //wsl.localhost/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/${p}"
     done
-    echo "directory //wsl.localhost/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/build/$(relative_builddir "$@")/include"
+    echo "directory //wsl.localhost/${WSL_DISTRO_NAME}${ORIGINAL_REPO_PATH}/build/$(relative_builddir)/include"
     popd >/dev/null
 }
 
@@ -165,77 +147,83 @@ gen_gdbinit_prl() {
     do
         echo "directory ${win_p}/$p"
     done
-    p="build/$(relative_builddir "$@")/include"
+    p="build/$(relative_builddir)/include"
     echo "directory ${win_p}/$p"
     popd >/dev/null
 }
 
 
 do_config() {
-    source "$SCRIPTS/internal/function_prolog"
-
     local srcdir=$PROJROOT/ncurses
-    local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "${_args[@]}")
+    local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir)
     local cfg=$srcdir/configure
-    local dynopts="--with-shared"
+    local dynopts=
     local opts=
     local cflags= 
     local ldflags=
-    local prefix=$(get_config_prefix "${_args[@]}")
+    local prefix=$(get_config_prefix)
 
     [ -x "$cfg" ] || _fail "Configure script not found or not executable: $cfg"
 
-    if is_default_build "${_args[@]}"; then
-        _interop=1
-        _spfuncs=0
-        _winconsole=0
-    fi
-
-    if [ $_native -eq 0 ]; then
+    if ! target_native; then
         opts+=" --build=${build_bht} \
             --host=${host_bht} 
             --with-strip-program=${STRIP}"
     fi
 
-    if [ $_dynamic -eq 0 ]; then
-        dynopts="--without-shared"
-    fi
-    if [ $_conpty -eq 0 ]; then
-        opts+=" --disable-conpty"
+    if feature_dynamic; then
+        dynopts="--with-shared"
     else
-        opts+=" --enable-conpty"
+        dynopts="--without-shared --with-static"
     fi
-    if [ $_winconsole -ne 0 ]; then
+
+    if feature_conpty; then
+        opts+=" --enable-conpty"
+    else
+        opts+=" --disable-conpty"
+    fi
+
+    if feature_winconsole; then
         opts+=" --enable-win-console"
     else
         opts+=" --disable-win-console"
     fi
-    if [ $_interop -ne 0 ]; then
+    
+    if feature_interop; then
         opts+=" --enable-interop"
     else
         opts+=" --disable-interop"
     fi
-    if [ $_spfuncs -ne 0 ]; then
+    
+    if feature_spfuncs; then
         opts+=" --enable-sp-funcs"
     else
         opts+=" --disable-sp-funcs"
     fi
-    if [ $_reentrant -ne 0 ]; then
+    
+    if feature_reentrant; then
         opts+=" --enable-reentrant"
     else
         opts+=" --disable-reentrant"
     fi
-    if [ $_widec -ne 0 ]; then
+    
+    if feature_wide; then
         opts+=" --enable-widec"
     else
         opts+=" --disable-widec"
     fi
 
-    if [ $_native -eq 0 ]; then
-        if [ $_winconsole -ne 0 ]; then
+    if feature_termlib; then
+        opts="$opts --with-termlib"
+    else
+        opts="$opts --without-termlib"
+    fi
+
+    if ! target_native; then
+        if feature_winconsole; then
             cflags="$cflags"
         fi
-        if [ $_ucrt -eq 0 ]; then
+        if runtime_msvcrt; then
             opts+=" --with-extra-suffix=-msvcrt"
         fi
         opts+=" --disable-home-terminfo \
@@ -246,16 +234,16 @@ do_config() {
             cflags="$cflags -DJPF=0 -I${PCRE2_ROOT}/include -DPCRE2_STATIC -DHAVE_REGEX_H=1 -DHAVE_REGEX_H_FUNCS=1"
             ldflags="$ldflags -L${PCRE2_ROOT}/lib"
     else
-	if is_native_darwin; then
+	    if is_native_darwin; then
             opts+=" --enable-home-terminfo \
                 --enable-symlinks \
                 --without-manpages"
-	else
+	    else
             opts+=" --enable-home-terminfo \
                 --enable-symlinks \
                 --with-fallbacks=linux,screen-256color,screen,xterm-256color,xterm,vt100 \
                 --without-manpages"
-	fi
+	    fi
     fi
     
     rm -rf "$blddir"
@@ -267,13 +255,7 @@ do_config() {
         --without-cxx --without-ada \
         $dynopts"
     
-    if [ $_libseparate -ne 0 ]; then
-        opts="$opts --with-termlib"
-    else
-        opts="$opts --without-termlib"
-    fi
-
-    if [ $_debug -ne 0 ]; then
+    if config_debug; then
         cflags="$cflags -g"
         opts="$opts \
             --without-manpages \
@@ -310,8 +292,8 @@ do_config() {
         --enable-opaque-form \
         --enable-pc-files"
 
-    if [ $_dynamic -ne 0 ]; then
-        if [ $_native -ne 0 ]; then
+    if feature_dynamic; then
+        if ! target_native; then
 	        if ! is_native_darwin; then
 		        ldflags="$ldflags -static-libgcc -Wl,-Bdynamic"
 	        fi
@@ -330,7 +312,7 @@ do_config() {
     fi
 
     pushd "$blddir" >/dev/null
-    if [ $_native -eq 0 ]; then
+    if ! target_native; then
         # Add PCRE2 libraries to LIBS so they appear at the end of the link line
         CFLAGS="${cflags}" LDFLAGS="${ldflags}" LIBS="-lpcre2-posix -lpcre2-8" \
         ${cfg} ${opts} --prefix="/${prefix}" \
@@ -343,7 +325,7 @@ do_config() {
             --srcdir="${srcdir}"
     fi
     popd >/dev/null
-    if [ $_dynamic -eq 0 ]; then
+    if ! feature_dynamic; then
         echo "S" > "$blddir/.static"
         rm -f "$blddir/.dynamic"
     else
@@ -353,11 +335,10 @@ do_config() {
 }
 
 do_build() {
-    source "$SCRIPTS/internal/function_prolog"
     local srcdir=$PROJROOT/ncurses
-    local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "${_args[@]}")
+    local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir)
 
-    if [ $_clean -ne 0 ]; then
+    if option_clean; then
         _trace "Cleaning build directory: ${blddir}"
         rm -rf "${blddir}"
     fi
@@ -365,14 +346,14 @@ do_build() {
     mkdir -p "${blddir}"
 
     if [ ! -f "$blddir/Makefile" ]; then
-        do_config "${_args[@]}"
+        do_config
     else
-        if [ $_dynamic -eq 0 ] && [ -f "$blddir/.dynamic" ]; then
+        if ! feature_dynamic && [ -f "$blddir/.dynamic" ]; then
             _trace "Configuration mismatch: previously configured for dynamic, now static. Reconfiguring..."
-            do_config "${_args[@]}"
-        elif [ $_dynamic -ne 0 ] && [ -f "$blddir/.static" ]; then
+            do_config
+        elif feature_dynamic && [ -f "$blddir/.static" ]; then
             _trace "Configuration mismatch: previously configured for static, now dynamic. Reconfiguring..."
-            do_config "${_args[@]}"
+            do_config
         else
             _trace "Existing configuration matches current options. Skipping configuration step."
         fi
@@ -381,13 +362,13 @@ do_build() {
     make -j$(nproc) -C "$blddir"
     [ $? -ne 0 ] && _fail "Build failed"
 
-    if [ $_debug -ne 0 ] && [ $_woa -eq 0 ] ; then
-        if maybe_parallels_desktop; then
-            gen_gdbinit_prl "${_args[@]}" > ${blddir}/test/.gdbinit
+    if config_debug; then
+        if target_aarch64 && maybe_parallels_desktop; then
+            gen_gdbinit_prl  > ${blddir}/test/.gdbinit
             _trace "Generated .gdbinit for Parallels Desktop: ${blddir}/test/.gdbinit"
         fi
         if in_wsl2; then
-            gen_gdbinit "${_args[@]}" > ${blddir}/test/.gdbinit
+            gen_gdbinit > ${blddir}/test/.gdbinit
             _trace "Generated .gdbinit for WSL2: ${blddir}/test/.gdbinit"
         fi
     fi
@@ -395,12 +376,11 @@ do_build() {
 }
 
 do_install() {
-    source "$SCRIPTS/internal/function_prolog"
     local srcdir=$PROJROOT/ncurses
-    local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir "${_args[@]}")
-    local instdir=${PROJROOT}/${_relative_instroot}/$(relative_installbase "${_args[@]}")
+    local blddir=${PROJROOT}/${_relative_buildroot}/$(relative_builddir)
+    local instdir=${PROJROOT}/${_relative_instroot}/$(relative_installbase)
 
-    if [ $_clean -ne 0 ]; then
+    if option_clean; then
         _trace "Cleaning install directory: ${instdir}"
         rm -rf "${instdir}"
     fi
@@ -415,22 +395,22 @@ do_install() {
 
 if [ "$SCRIPTNAME" = "ncbuildinfo" ]; then
 cat <<EOF
-prefix="$(get_config_prefix "$@")"
-library_suffix="$(get_suffix "$@")"
-extra_suffix="$(get_extra_suffix "$@")"
-relative_build_directory="$(relative_builddir "$@")"
-relative_install_base="$(relative_installbase "$@")"
-relative_install_directory="$(relative_installdir "$@")" 
-target_arch="$(get_target_arch "$@")"
+prefix="$(get_config_prefix)"
+library_suffix="$(get_suffix)"
+extra_suffix="$(get_extra_suffix)"
+relative_build_directory="$(relative_builddir)"
+relative_install_base="$(relative_installbase)"
+relative_install_directory="$(relative_installdir)" 
+target_arch="$(get_target_arch)"
 EOF
-do_config "$@"
+do_config
     exit 0
 fi
 
-do_build "$@"
+do_build
 [ $? -ne 0 ] && _fail "Build failed"
 
-do_install "$@"
+do_install
 [ $? -ne 0 ] && _fail "Install failed"
 
 exit 0

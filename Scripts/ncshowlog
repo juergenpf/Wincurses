@@ -67,15 +67,15 @@ get_options() {
     while [[ $# -gt 0 ]]
     do
 	    case "$1" in
-            -c|--clean)
+            -c|-clean)
                 _opt_clean=1
                 _mainopt=$(expr $_mainopt + 1)
                 ;;
-            -l|--list)
+            -l|-list)
                 _opt_list=1
                 _mainopt=$(expr $_mainopt + 1)
                 ;;
-            -s|--show)
+            -s|-show)
                 _opt_show=1
                 _mainopt=$(expr $_mainopt + 1)
                 shift
@@ -86,20 +86,20 @@ get_options() {
                 fi
                 [ -n "$_jobid" ] || _fail "Invalid job ID for --show option"
                 ;;
-            -o|--out)
+            -o|-out)
                 _opt_out=1
                 ;;
-            -e|--err)
+            -e|-err)
                 _opt_err=1
                 ;;
-            -h|--help)
+            -h|-help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
-                echo "  -c, --clean           Clean all old job entries."
-                echo "  -l, --list            List all job entries (this is the default if no other options are specified)."
-                echo "  -s, --show            Show details of a specific job entry."
-                echo "  -o, --out             Show the standard output of a specific job entry."
-                echo "  -e, --err             Show the standard error of a specific job entry."
+                echo "  -c, -clean   Clean all old job entries."
+                echo "  -l, -list    List all job entries (this is the default if no other options are specified)."
+                echo "  -s, -show    Show details of a specific job entry."
+                echo "  -o, -out     Show the standard output of a specific job entry."
+                echo "  -e, -err     Show the standard error of a specific job entry."
                 exit 0
                 ;;
 	        --)

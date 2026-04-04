@@ -4,102 +4,50 @@
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS//internal/inc
 
-err=
-
-_opt_debug=1
-_opt_dynamic=0
-_opt_libseparate=0
-_opt_native=0
-_opt_clean=0
-_opt_reentrant=0
-_opt_ucrt=1
-_opt_x86=0
-_opt_woa=0
-
-
-opt_debug() {
-    [ $_opt_debug -ne 0 ] && return 0
-    return 1
-}
-
-opt_dynamic() {
-    [ $_opt_dynamic -ne 0 ] && return 0
-    return 1
-}
-
-opt_reentrant() {
-    [ $_opt_reentrant -ne 0 ] && return 0
-    return 1
-}
-
-opt_libseparate() {
-    [ $_opt_libseparate -ne 0 ] && return 0
-    return 1
-}
-
-opt_native() {
-    [ $_opt_native -ne 0 ] && return 0
-    return 1
-}
-
-opt_ucrt() {
-    [ $_opt_ucrt -ne 0 ] && return 0
-    return 1
-}
-
-opt_x86() {
-    [ $_opt_x86 -ne 0 ] && return 0
-    return 1
-}
-
-opt_woa() {
-    [ $_opt_woa -ne 0 ] && return 0
-    return 1
-}
-
-opt_clean() {
-    [ $_opt_clean -ne 0 ] && return 0
-    return 1
-}
 
 doit() {
-    ${SCRIPTS}/ncbuild $@
-    [ $? -ne 0 ] && _fail "Build failed with options: $@"
+    _log "ncbuild -ascii $@"
+    ${SCRIPTS}/ncbuild -ascii $@
+    [ $? -ne 0 ] && _fail "Build failed with options: -ascii $@"
+    _log "ncbuild -wide $@"
+    ${SCRIPTS}/ncbuild -wide $@
+    [ $? -ne 0 ] && _fail "Build failed with options: -wide $@"
 }
 
 doall() {
     local optargs="$@"
+    local rt=
     local msvcrt=
     local nocon=0
     local expected=0
     local libs="ncurses panel menu form"
     local lib
     local cnt=0
-    local prf=$(build_prefix "$@")
+    local prf=$(build_prefix)
 
-    opt_libseparate && libs+=" tinfo"
+    feature_termlib && libs+=" tinfo"
 
-    if opt_native; then
-        if opt_reentrant; then
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
+    if target_native; then
+        if feature_reentrant; then
+            OPTARGS=$optargs powerCall doit -ascii -interop -spfuncs -reentrant
             expected=16
         else
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
+            OPTARGS=$optargs powerCall doit -ascii -interop -spfuncs
             expected=8
         fi
     else
-        opt_ucrt && msvcrt="--msvcrt"
-        opt_woa && nocon=1
-        if opt_reentrant; then
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs --reentrant
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs --reentrant
+        runtime_msvcrt && rt="-$(get_runtime)"
+        target_aarch64 && nocon=1
+        if feature_reentrant; then
+            OPTARGS="$optargs -conpty $rt" powerCall doit -interop -spfuncs -reentrant
+            [ $nocon -eq 0 ] && OPTARGS="$optargs -conpty -winconsole $rt" powerCall doit -interop -spfuncs -reentrant
+            [ $nocon -eq 0 ] && OPTARGS="$optargs -winconsole $rt" powerCall doit -interop -spfuncs -reentrant
             expected=16
             [ $nocon -eq 0 ] && expected=48
         else
-            OPTARGS=$optargs powerCall doit --ascii --interop --spfuncs
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --noconpty --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
-            [ $nocon -eq 0 ] && OPTARGS="$optargs --winconsole $msvcrt" powerCall doit --ascii --interop --spfuncs
+            OPTARGS="$optargs -conpty $rt" powerCall doit -interop -spfuncs
+            [ $nocon -eq 0 ] && OPTARGS="$optargs -conpty -winconsole $rt" powerCall doit -interop -spfuncs
+            [ $nocon -eq 0 ] && OPTARGS="$optargs -winconsole $rt" powerCall doit -interop -spfuncs
             expected=8
             [ $nocon -eq 0 ] && expected=24
         fi
@@ -114,99 +62,85 @@ doall() {
     done          
 }
 
+forbidden_feature() {
+    local feature="$1"
+    has_feature arg_features "$feature" && \
+      _fail "Option -$feature is not allowed when using $SCRIPTNAME, because it is part of the constructed set of builds."
+}
+
 get_options() {
-    local err=
-    while [[ $# -gt 0 ]]
-    do
-	    case "$1" in
-            -c|--clean)
-                _opt_clean=1
-                ;;
-            -N|--native)
-                _opt_native=1
-                ;;
-            -m|--msvcrt)
-                _opt_ucrt=0
-                ;;
-            -w|--woa)
-                _opt_woa=1
-                ;;
-            -x|--x86)
-                _opt_x86=1
-                ;;
-            -t|--reentrant)
-                _opt_reentrant=1
-                ;;
-            -n|--nodebug)
-                _opt_debug=0
-                ;;
-            -v|--verbose)
-                _opt_verbose=1
-                ;;
-            -d|--dynamic)
-                _opt_dynamic=1
-                ;;
-            -l|--libseparate)
-                _opt_libseparate=1
-                ;;
-	        --log)
-		        shift
-                _logfile="$1"
-		        ;;
-            -h|--help)
-                echo "Usage: $0 [options]"
-                echo "Options:"
-                echo "  -c, --clean           Clean build and install directories before building"
-                echo "  -N, --native          Build for native execution in Linux (no cross-compilation)"
-                echo "  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)"
-                echo "  -w, --woa             Build for Windows on ARM (WoA)"
-                echo "  -x, --x86             Build for x86 (32-bit)"
-                echo "  -t, --reentrant       Build also all combinations possible with --reentrant, results in 16 builds."
-                echo "  -d, --dynamic         Build with shared libraries (default is static)"
-                echo "  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)"
-                echo "  -n, --nodebug         Build without debug symbols and features"
-                echo "  -v, --verbose         Enable verbose output"
-                echo " --log <file>           Log verbose output to the specified file"
-                echo "  -h, --help            Show this help message and exit"
-                exit 0
-                ;;
-	        --)
-		        shift
-		        break
-		        ;;
-            -*)
-                _fail "Unknown option: $1"
-                ;;    
-	        *)
-		        err="$err $1"
-		        break
-		        ;;
-	    esac
-        shift
-    done
-    [ -n "$err" ] && _fail "Invalid commandline argument(s): $err"
+    parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters -no-defaults "$@"
+    [ $? -ne 0 ] && _fail "Error parsing options"
+
+    opt_help && {
+        cat << EOF
+Usage: $SCRIPTNAME [options]
+
+  Build configuration (default: debug): Only one of these options can be specified.
+
+    -debug               Build debug version (This is the default)
+    -release             Build release version
+
+  Reentrancy options (for improved thread safetyness)
+
+    -reentrant           Build reentrant version
+
+  Target architecture (default: x86_64): Only one of these options can be specified.
+                         When not -native, this is the architeture of the Windows OS being targeted.
+
+    -x86_64              Build for x86_64 (amd64) architecture
+    -aarch64             Build for aarch64 (arm64) architecture
+    -x86                 Build for x86 (i686) architecture
+    -native              Build for native execution in Linux or the host environment
+
+  C-Runtime of the Windows target OS (default: UCRT): Only one of these options can be specified.
+                         This is only allowd, when building for Windows.
+
+    -ucrt                Build with UCRT runtime
+    -msvcrt              Build with MSVCRT instead of UCRT
+
+  Internal library configuration features:
+
+    -termlib             Build terminfo library only
+    -dynamic             Build with shared libraries (default is static)
+
+  Other options:
+  
+    -clean               Clean build and install directories before building
+    -verbose             Enable verbose output
+    -log <file>          Log verbose output to the specified file
+    -help                Show this help message and exit
+EOF
+        exit 0
+    }
+
+    forbidden_feature wide
+    forbidden_feature ascii
+    forbidden_feature winconsole
+    forbidden_feature conpty
+    forbidden_feature interop
+    forbidden_feature spfuncs
+
     return 0
 }
 
 get_options $@
-[ $? -ne 0 ] && _fail "Invalid options: $err"
+[ $? -ne 0 ] && _fail "Error parsing options"
 
-if ! opt_native; then
+if ! target_native; then
     in_container || _fail "Not running in devcontainer." 
 fi
 
 avoid_hostrun
 
-addopts=
-! opt_debug     && addopts+=" --nodebug"
-! opt_ucrt      && addopts+=" --msvcrt"
-opt_x86         && addopts+=" --x86"
-opt_woa         && addopts+=" --woa"
-opt_dynamic     && addopts+=" --dynamic"
-opt_libseparate && addopts+=" --libseparate" 
-opt_clean       && addopts+=" --clean"
-opt_verbose     && addopts+=" --verbose"
-opt_native      && addopts+=" --native"
+addopts="-$(get_config)"
+addopts+=" -$(get_runtime)"
+addopts+=" -$(get_target)"
+
+feature_dynamic  && addopts+=" -dynamic"
+feature_termlib  && addopts+=" -termlib" 
+opt_clean        && addopts+=" -clean"
+opt_verbose      && addopts+=" -verbose"
 
 doall $addopts
 

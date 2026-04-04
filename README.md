@@ -101,29 +101,57 @@ wincurses$ ncbuild
 you'll get a static debug build of a wide ncurses for x86_64 targeting the UCRT.
 
 #### Usage
+~~~bash
+Usage: ncbuild [options]
+Options:
 
-```bash
-./ncbuild [options]
-```
+  Build configuration (default: debug): Only one of these options can be specified.
 
-#####  Options
-~~~
-  -a, --ascii           Build ASCII version (disable wide character support)
-  -t, --reentrant       Build reentrant version
-  -W, --winconsole      Build with rhe old Console API (for Windows before Win10 1809)
-  -P, --noconpty        Build without ConPTY support (intended for Windows older than Windows 10 1809) 
-  -i, --interop         Build with interop features enabled. 
-  -s, --spfuncs         Build with sp-funcs support.
-  -N, --native          Build for native execution in Linux (no cross-compilation)
-  -m, --msvcrt          Build with MSVCRT instead of UCRT
-  -w, --woa             Build for Windows on ARM (WOA) with UCRT
-  -x, --x86             Build for x86 (i686) with MSVCRT
-  -l, --libseparate     Build terminfo library separately from curses
-  -d, --dynamic         Build with shared libraries (default is static)
-  -n, --nodebug         Build without debug symbols and features
-  -c, --clean           Clean build and install directories before building
-  -v, --verbose         Enable verbose output
-  -h, --help            Show this help message and exit~~~
+    -debug               Build debug version (this is the default)
+    -release             Build release version
+
+  Character width configuration (default: wide): Only one of these options can be specified.
+
+    -ascii               Build ASCII version (8-Bit characters only)
+    -wide                Build wide character version (Unicode support, this is the default)
+
+  Reentrancy options (for improved thread safetyness)
+
+    -reentrant           Build reentrant version (improved thread safety)
+
+  Target architecture (default: x86_64): Only one of these options can be specified.
+                         When not -native, this is the architeture of the Windows OS being targeted.  
+
+    -x86_64              Build for x86_64 (amd64) architecture
+    -aarch64             Build for aarch64 (arm64) architecture, Windows on ARM
+    -x86                 Build for x86 (i686) architecture
+    -native              Build for native execution in Linux or the host environment
+
+  Windows console support (default: ConPTY): Only one of these options can be specified.
+                         This is only allowd, when building for Windows. 
+
+    -conpty              Build with ConPTY support (intended for Windows 10 1809 and later)   
+    -winconsole          Build with winconsole support (intended for Windows older than Windows 10 1809)
+
+  C-Runtime of the Windows target OS (default: UCRT): Only one of these options can be specified.
+                         This is only allowd, when building for Windows.
+
+    -ucrt                Build with UCRT runtime
+    -msvcrt              Build with MSVCRT instead of UCRT
+
+  Internal library configuration features:
+
+    -interop             Build with interop features enabled
+    -spfuncs             Build with sp-funcs support.
+    -termlib             Build terminfo library only
+    -dynamic             Build with shared libraries (default is static)
+
+  Other options:
+  
+    -log <file>          Log verbose output to the specified file
+    -c|-clean            Clean build and install directories before building
+    -v|-verbose          Enable verbose output
+    -h|-help             Show this help message and exit
 ~~~
 #### Example
 ```bash
@@ -133,67 +161,79 @@ would do a static debug build of a non-wide ncurses for the i686 architecture ta
 
 #### The options in Detail
 
-##### -a, --ascii
-The default for our build system is to do builds that have the ncurses configuration option `--enable-widec` set. With this option, you produce a `--disable-widec` build.
-
-##### -t, --reentrant
-The default is to build libraries without reentrancy support (`--disable-reentrant`). With this option, you enable `--enable-reentrant`.
-
-##### -W, --winconsole
-By default, we **always** use the `ncurses` configure option --enable-conpty to make sure, we support the modern pseudo-console architecture if available. But if your code needs to run on Windows version before Windows 10 Version 1809 (released October 2018), you can use this option in addition. The library is built in a way, that it detects whether or not ConPTY is supported it uses it if available. The classical console API will only be used, if ConPTY is not available.
-
-##### -P, --noconpty
-This option disables ConPTY completely and thecurses library will only be build to support the Console API fpr older Windows versions. This is definitively **NOT RECOMMENDED** and should only be used, if you explicitly target an environment with only older versions of Windows.
-
-##### -i, --interop
-Is per default enabled for Windows cross-builds. It is relevant in the forms library to ease the definition of field types when calling these routines from other languages than C, which might have problems using C constructs like va_lists.
-
-##### -s, --spfuncs
-Only relevant for native builds. It adds an additional set of functions to the ncurses API which optimise to use multiple terminals in a single application.
-
-##### -N, --native
-You can use this script to build ncurses also for the host platform. If you run this inside the container, you build for Debian SID. The script with this option can also by run outside the container and will then build for the platform you run the devcontainer on, e.g. this then could be Darwin. Please note, that some of the options, e.g. the Windows specific ones, will only be supported in the container in non-native mode.
-
-##### -m, --msvcrt
-The default is to build for UCRT. With this option, you trigger a build for MSVCRT. This is actually only indirectly a ncurses configuration option, as it mainly selects the toolchain to be used for the build. This will be reflected in the `--host` configuration option of ncurses.
-
-##### -w, --woa
-The default is to build for x86_64 Intel 64-bit architecture. With this option, you select aarch64 for Windows on ARM. Please note that this option conflicts with --msvcrt. This old stuff is not supported on newer architectures.
-
-##### -x, --x86
-Like --woa, this selects a different architecture for the build, this time an i686 Intel 32-bit build. In this case, you must also specify --msvcrt, as x86 is considered legacy and only supports the old C runtime.
-
-##### -l, --libseparate
-The default is that the terminfo functionality is linked into the main ncurses library (statically and dynamically), corresponding to the ncurses configure option `--without-termlib`. With this option, you trigger a `--with-termlib` option, which will create a separate library `tinfo`.
-
-##### -d, --dynamic
-By default, we build static libraries. With this option, you trigger the build of DLLs.
-
-##### -n, --nodebug
+##### -debug
 By default, we build with support for debugging. Please note, this is a developer system, so debugging is a major task. With this option, no debug information is generated.
 
-##### -c, --clean
+##### -release
+Build with a release configuration (no tracing, no debugging libraries, no test programs)
+
+##### -ascii
+Build for a typical 8-bit ASCII characterset ()`--disable-widec`).
+
+##### -wide
+Build with support for wide characters (Unicode, `--enable-widec`). If you don't specify either `-wide` or `-ascii`, this is the default.
+
+##### -reentrant
+The default is to build libraries without reentrancy support (`--disable-reentrant`). With this option, you enable `--enable-reentrant`. The library will then be compiled with increased thread safety, which may come with some performance implications due to locking.
+
+##### -x86_64
+Build for Windows on 64-Bit Intel CPUs. This is the default if you don't specify any other target system option
+
+##### -aarch64
+Build for Windows on ARM.
+
+##### -x86
+Build for 32-Bit Intel CPUs. Please note, that 32-Bit support nowadays is declining, we may drop that too in the future.
+
+##### -native
+Do y build for the native environment. If you run this inside the devcontainer, we will build a Debian version of the libraries, as the container is currently based on Debian. You may run `ncbuild -native` as the only target option also outside the container directly on your host system. On MacOS for example this would build then ncurses for MacOS.
+
+##### -conpty
+When you build for Windows, with this option you build ncurses with support for Pseudo-Console, which is available since Windows 10 Version 1809 (October 2018). If you don't specify any of the console options for Windows, this is the default.
+
+##### -winconsole
+If your code needs to run on Windows version before Windows 10 Version 1809 (released October 2018), you can use this option in addition. The library is built in a way, that it detects whether or not ConPTY is supported it uses it if available. The classical console API will only be used, if ConPTY is not available. You may compile ncurses without `-conpty` and only with this option, but then your code will only run on older Windows versions. We do not support to run a `-winconsole` only build on modern Windows.
+
+##### -ucrt
+Compile for Windows with the Universal C Run-Time (`UCRT`). If you don't specify any runtime option, this is the default. This is the current preferred runtime with support for Unicode-Locales. This is actually only indirectly a ncurses configuration option, as it mainly selects the toolchain to be used for the build. This will be reflected in the `-host` configuration option of ncurses.
+
+##### -msvcrt
+With this option, you trigger a build for MSVCRT. This is actually only indirectly a ncurses configuration option, as it mainly selects the toolchain to be used for the build. This will be reflected in the `-host` configuration option of ncurses.
+
+##### -interop
+This option is relevant in the forms library to ease the definition of field types when calling these routines from other languages than C, which might have problems using C constructs like va_lists.
+
+##### -spfuncs
+This option adds an additional set of functions to the ncurses API which optimises the use of multiple terminals in a single application. This is less relevant for Windows, as a Windows process can only have one single console, and we use the console for ncurses. 
+
+##### -termlib
+The default is that the terminfo functionality is linked into the main ncurses library (statically and dynamically), corresponding to the ncurses configure option `--without-termlib`. With this option, you trigger a `--with-termlib` option, which will create a separate library `tinfo`.
+
+##### -dynamic
+By default, we build static libraries. With this option, you trigger the build of DLLs.
+
+##### -log filename
+The log output of the scripts will be redirected into that file.
+
+##### -c|-clean
 By default, we do not clean the build directory before continuing with the steps to configure and build. That means, if after a first run you have a Makefile and your compile fails, ncbuild will skip configuration and continue to process the makefile. With the --clean option, you ensure that the build directories are cleaned before continuing. This results in running configure and then doing the build.
 
-##### -v, --verbose
+##### -v|-verbose
 Writes some additional tracing information from the script to stderr.
 
-##### -h, --help
+##### -h|-help
 Obvious.
 
 #### What will be built?
 When the default debug build option is selected, we will compile the library with most of the debugging and diagnostic settings (eg. tracing is built in, assertions enabled etc.). We also build the progs belongig to ncurses (e.g. tic.exe, infocmp.exe etc.) as well as all the tests. The output will be in a subdirectory `debug` under the top-level `build` directory.
 
-If the `--nodebug` option is selected, the diagnostic and debug options are mostly **not** configured and we don't build the tests. The output will be in a subdirectory `release` under the top level `build` directory.
+If the `-release` option is selected, the diagnostic and debug options are mostly **not** configured and we don't build the tests. The output will be in a subdirectory `release` under the top level `build` directory.
 
 After a successful build, an install will be performed into the top level inst directory. The structure of this directory mirros the one of the build directory, so every build that represents a different configuration will be installed into its own install subdirectory.
 
 Even if the install fails, you may be able to run the test programs, even without insall there is no `terminfo` library available. That actually doesn't matter as the libraries are built with `ms-terminal` as a fallback terminal description in case no database could be discovered. 
 
-`ncbuild` is a command, that may also be run outside of the devcontainer. In that case, I assume, that the host OS has the necessary toolchains (gcc, binutils etc.) installed, to be able to compile ncurses. Please note, that when running outside the devcontainer, there is pne issue on MacOS. MacOS has a getopt, that is incompatible with GNUU getopt, which I use in the scripts. You must use your preferred MacOS package manager, to install GNU getopt, e.g. with [Homebrew](https://brew.sh/) you may use
-```bash
-brew install gnu-getopt
-```
+`ncbuild` is a command, that may also be run outside of the devcontainer. In that case, I assume, that the host OS has the necessary toolchains (gcc, binutils etc.) installed, to be able to compile ncurses. 
 
 ### ncnuke
 `ncnuke` will completely remove the top level directories `build` and ìnst` and v´create new ones, which are empty. Every subsequent build will start fresh. We assume this to software for adults, so no questions like "are you sure?" will be asked. We assume, you know what you are doing.
@@ -209,18 +249,44 @@ If you run it for a native build, we will run builds for all possible combintati
 This results in 8 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
 You may call `ncbuildall` with these options:
 ```bash
-  -c, --clean           Clean build and install directories before building
-  -N, --native          Build for native execution in Linux (no cross-compilation)
-  -m, --msvcrt          Build with MSVCRT instead of UCRT (Windows only)
-  -w, --woa             Build for Windows on ARM (WoA)
-  -x, --x86             Build for x86 (32-bit)
-  -t, --reentrant       Build also all combinations possible with --reentrant.
-  -d, --dynamic         Build with shared libraries (default is static)
-  -l, --libseparate     Build separate tinfo library (default is combined with ncurses)
-  -n, --nodebug         Build without debug symbols and features
-  -v, --verbose         Enable verbose output
-  -h, --help            Show this help message and exit
-  ```
+Usage: ncbuildall [options]
+
+  Build configuration (default: debug): Only one of these options can be specified.
+
+    -debug               Build debug version (This is the default)
+    -release             Build release version
+
+  Reentrancy options (for improved thread safetyness)
+
+    -reentrant           Build reentrant version
+
+  Target architecture (default: x86_64): Only one of these options can be specified.
+                         When not -native, this is the architeture of the Windows OS being targeted.
+
+    -x86_64              Build for x86_64 (amd64) architecture
+    -aarch64             Build for aarch64 (arm64) architecture
+    -x86                 Build for x86 (i686) architecture
+    -native              Build for native execution in Linux or the host environment
+
+  C-Runtime of the Windows target OS (default: UCRT): Only one of these options can be specified.
+                         This is only allowd, when building for Windows.
+
+    -ucrt                Build with UCRT runtime
+    -msvcrt              Build with MSVCRT instead of UCRT
+
+  Internal library configuration features:
+
+    -termlib             Build terminfo library only
+    -dynamic             Build with shared libraries (default is static)
+
+  Other options:
+  
+    -clean               Clean build and install directories before building
+    -verbose             Enable verbose output
+    -log <file>          Log verbose output to the specified file
+    -help                Show this help message and exit  ```
+```
+The meaning of the various obtions is explained in the `ncbuild` command description.
 
 ### ncbuildinfo
 This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
@@ -231,21 +297,21 @@ This command is not for use inside the container, but on the host system running
 ### ncshowlog
 If you use `ncbatchbuild` you may want to inspect the results and the status of such a build in a comfortable way. This is the purpose of this command. It has these options:
 ```bash
-  -c, --clean           Clean all old job entries.
-  -l, --list            List all job entries (this is the default if no other options are specified).
-  -s, --show            Show details of a specific job entry.
-  -o, --out             Show the standard output of a specific job entry.
-  -e, --err             Show the standard error of a specific job entry.
+  -c, -clean           Clean all old job entries.
+  -l, -list            List all job entries (this is the default if no other options are specified).
+  -s, -show            Show details of a specific job entry.
+  -o, -out             Show the standard output of a specific job entry.
+  -e, -err             Show the standard error of a specific job entry.
 ```
 The `--show` option requires a job ID as additional argument, the `--out` or `--err` options can only be used together with `--show`.
 
 Example use:
 ```bash
-$ ncshowlog --show 91
+$ ncshowlog -show 91
 ```
 will show the `log` output of the job with ID 91. If you use
 ```bash
-$ ncshowlog --show 91 --err
+$ ncshowlog -show 91 -err
 ```
 you will see the stderr output of that job.
 
