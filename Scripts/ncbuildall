@@ -73,7 +73,7 @@ get_options() {
     parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters -no-defaults "$@"
     [ $? -ne 0 ] && _fail "Error parsing options"
 
-    opt_help && {
+    option_help && {
         cat << EOF
 Usage: $SCRIPTNAME [options]
 
@@ -141,8 +141,8 @@ addopts=$(common_addopts)
 
 feature_dynamic  && addopts+=" -dynamic"
 feature_termlib  && addopts+=" -termlib" 
-opt_clean        && addopts+=" -clean"
-opt_verbose      && addopts+=" -verbose"
+option_clean     && addopts+=" -clean"
+option_verbose   && addopts+=" -verbose"
 
 doall $addopts
 

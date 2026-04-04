@@ -8,7 +8,7 @@ get_options() {
     parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters "$@"
     [ $? -ne 0 ] && _fail "Error parsing options"
 
-    opt_help && {
+    option_help && {
         cat << EOF
 Usage: $SCRIPTNAME [options]
 Options:
@@ -294,11 +294,11 @@ do_config() {
 
     if feature_dynamic; then
         if ! target_native; then
-	        if ! is_native_darwin; then
-		        ldflags="$ldflags -static-libgcc -Wl,-Bdynamic"
-	        fi
+		    ldflags="$ldflags -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
         else
-            ldflags="$ldflags -static-libgcc -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic"
+	        if ! is_native_darwin; then
+                ldflags="$ldflags -static-libgcc -Wl,-Bdynamic"
+            fi
         fi
     fi
     opts=$(echo "$opts" | xargs)

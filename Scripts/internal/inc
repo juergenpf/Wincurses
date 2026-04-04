@@ -209,17 +209,17 @@ target_x86() {
     return 1
 }
 
-opt_verbose() {
+option_verbose() {
     [ "${arg_options["verbose"]+_}" ] && return 0
     return 1
 }
 
-opt_clean() {
+option_clean() {
     [ "${arg_options["clean"]+_}" ] && return 0
     return 1
 }
 
-opt_help() {
+option_help() {
     [ "${arg_options["help"]+_}" ] && return 0
     return 1
 }

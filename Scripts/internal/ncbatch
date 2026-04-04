@@ -61,6 +61,16 @@ _rename() {
     return 0
 }
 
+opt_clean() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -clean) return 0 ;;
+        esac
+        shift
+    done
+    return 1
+}
+
 trap _rename EXIT
 
 _sep
