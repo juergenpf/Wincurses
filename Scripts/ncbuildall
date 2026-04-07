@@ -3,7 +3,7 @@
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/internal/inc
-. $SCRIPTS/internal/batch
+. $SCRIPTS/internal/bulk
 
 forbidden_feature() {
     local feature="$1"
@@ -65,11 +65,12 @@ EOF
     return 0
 }
 
-in_container && _fail "This script is not meant to be run inside the devcontainer"
+in_container || _fail "This script must run inside the devcontainer"
 
 get_options $@
 [ $? -ne 0 ] && _fail "Error parsing options"
 
+assert_bulkdirs || _fail "Failed to assert bulk directories"
 
 [ -f "$NC_CURRENT_JOB" ] && _fail "A batch build is already running"
 
@@ -80,22 +81,21 @@ feature_termlib  && addopts+=" -termlib"
 option_clean     && addopts+=" -clean"
 option_verbose   && addopts+=" -verbose"
 
-pushd $PROJROOT >/dev/null
 stamp=$(date +"%Y%m%d%H%M%S")
-jobid=$(batch <<EOF 2>&1 | sed -n 's/.*[Jj]ob \([0-9][0-9]*\).*/\1/p'
-cd $PROJROOT
-NCSTAMP=$stamp ./Scripts/internal/ncbatch $addopts
-EOF
-)
-NCJOB=${NC_LOGBASE}/${NC_BATCH_PREFIX}-${stamp}.job
-rm -f $NCJOB $NC_CURRENT_JOB
-touch $NCJOB
-ln -f $NCJOB $NC_CURRENT_JOB
-cat >> $NCJOB <<EOF
+jobid=$(new_job)
+[ $? -eq 0 ] || _fail "Failed to create new job directory"
+
+NCJOB=$(jobfile_for_jobid $jobid)
+[ $? -eq 0 ] || _fail "Failed to get job file for job id $jobid"
+cat > $NCJOB <<EOF
 jobid=$jobid
 stamp=$stamp
 options="$addopts"
 EOF
-popd >/dev/null
-echo "Queued Wincurses batch job id $jobid, stamp is $stamp"
+
+nohup bash -c "$SCRIPTS/internal/ncbulk $jobid" >/dev/null 2>/dev/null &
+_log "Started background bulk build with job id $jobid. You may inspect it with ncbulkinfo (alias ncbi)."
+_log "e.g. use commandline: 'ncbi -s $jobid' to see the log output of the job"
+_log "or use 'ncbi -e -s $jobid' to see the error output of the job" 
+
 exit 0

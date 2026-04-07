@@ -1,0 +1,115 @@
+NC_BULK_PREFIX=ncbulk
+
+NC_RELATIVE_BULKROOT=.bulk
+NC_BULKROOT=${PROJROOT}/${NC_RELATIVE_BULKROOT}
+
+NC_RELATIVE_LOG_ROOT=${NC_RELATIVE_BULKROOT}/logs
+NC_LOG_ROOT=${PROJROOT}/${NC_RELATIVE_LOG_ROOT}
+
+NC_RELATIVE_JOB_ROOT=${NC_RELATIVE_BULKROOT}/jobs
+NC_JOB_ROOT=${PROJROOT}/${NC_RELATIVE_JOB_ROOT}
+
+NC_RELATIVE_JOB_SEQUENCE_FILE=${NC_RELATIVE_BULKROOT}/.seq
+NC_JOB_SEQUENCE_FILE=${PROJROOT}/${NC_RELATIVE_JOB_SEQUENCE_FILE}
+
+function assert_bulkdirs() {
+    [ -d "$PROJROOT/logs" ] && rm -rf "$PROJROOT/logs"
+    if [[ ! -d "$NC_BULKROOT" ]]; then
+        mkdir -p "$NC_BULKROOT"
+        _trace "Created bulk root directory: $NC_BULKROOT"
+        echo "0" > "$NC_JOB_SEQUENCE_FILE"
+    fi
+    [ -d "$NC_BULKROOT" ] || return 1
+    if [[ ! -d "$NC_LOG_ROOT" ]]; then
+        mkdir -p "$NC_LOG_ROOT"
+        _trace "Created log root directory: $NC_LOG_ROOT"
+    fi
+    [ -d "$NC_LOG_ROOT" ] || return 1
+    if [[ ! -d "$NC_JOB_ROOT" ]]; then
+        mkdir -p "$NC_JOB_ROOT"
+        _trace "Created job root directory: $NC_JOB_ROOT"
+    fi
+    [ -d "$NC_JOB_ROOT" ] || return 1
+    return 0
+}
+
+function test_jobdir() {
+    [ -d "$NC_JOB_ROOT" ]    || return 1
+    [ -d "$NC_JOB_ROOT/$1" ] || return 1
+    return 0
+}
+
+function last_jobid() {
+    if [ -f "$NC_JOB_SEQUENCE_FILE" ]; then
+        cat "$NC_JOB_SEQUENCE_FILE"
+    else
+        echo "0"
+    fi
+}
+
+function get_job_root() {
+    local jobid="$1"
+    echo "$NC_JOB_ROOT/$jobid"
+}
+
+function new_job() {
+    local jobid=$(last_jobid)
+    jobid=$((jobid + 1))
+    while test_jobdir $jobid; do
+        jobid=$((jobid + 1))
+    done
+    mkdir -p "$NC_JOB_ROOT/$jobid/$_relative_buildroot"
+    if [ $? -ne 0 ]; then
+        _trace "Failed to create job directory for job id $jobid/$_relative_buildroot"
+        return 1
+    fi 
+    mkdir -p "$NC_JOB_ROOT/$jobid/$_relative_instroot"
+    if [ $? -ne 0 ]; then
+        _trace "Failed to create job directory for job id $jobid/$_relative_instroot"
+        return 1
+    fi 
+    echo "$jobid" > "$NC_JOB_SEQUENCE_FILE"
+    echo "$jobid"
+}
+
+function jobfile_for_jobid() {
+    local jobid="$1"
+    echo "$NC_LOG_ROOT/${NC_BULK_PREFIX}-${jobid}.job"
+}
+
+function runfile_for_jobid() {
+    local jobid="$1"
+    echo "$NC_LOG_ROOT/${NC_BULK_PREFIX}-${jobid}.run"
+}
+
+function current_jobfile() {
+    local jobid=$(last_jobid)
+    jobfile_for_jobid $jobid
+}
+
+function delete_job() {
+    local jobid="$1"
+    local r=
+    local e
+    local exts="job log out err out.xz err.xz"
+    [ -n "$1" ] || return 1
+    r=$(runfile_for_jobid $jobid)
+    [ -f "$r" ] && return 1
+    _trace "rm -rf $NC_JOB_ROOT/$jobid"    
+    rm -rf "$NC_JOB_ROOT/$jobid"
+    for e in $exts; do
+        local f="$NC_LOG_ROOT/${NC_BULK_PREFIX}-${jobid}.${e}"
+        _trace "rm -f $f"
+        [ -f "$f" ] && rm -f "$f"
+    done
+    return 0
+}
+
+function purge_jobs() {
+    local jobid
+    _trace "Purging all job entries in $NC_JOB_ROOT and $NC_LOG_ROOT, except running ones..."
+    for jobid in $(ls $NC_JOB_ROOT); do
+        delete_job $jobid || _log "Failed to delete job with ID $jobid. Maybe it is still running."
+    done
+}
+

@@ -8,6 +8,7 @@ NCSCRIPTS="${workspace}/Scripts"
 if [ -d "$NCSCRIPTS" ]; then
     export PATH="$NCSCRIPTS:$PATH"
     export NCSCRIPTS
+    [ -x "$NCSCRIPTS/ncbulkinfo" ]    && alias ncbi="$NCSCRIPTS/ncbulkinfo"
 else
     unset NCSCRIPTS
 fi

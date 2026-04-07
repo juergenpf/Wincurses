@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# See License.md in the project root for license information.
+#
+SCRIPTS=$(cd $(dirname $BASH_SOURCE)/.. && pwd)
+. $SCRIPTS/internal/inc
+. $SCRIPTS/internal/bulk
+
+myjobid=$1
+[ -n "$myjobid" ] || _fail "No job id passed as argument"
+! in_container && _fail "This script must run inside the container"
+assert_bulkdirs || _fail "Failed to assert bulk directories"
+runfile=$(runfile_for_jobid $myjobid)
+echo "$myjobid" > "$runfile"
+
+N=$NC_BULK_PREFIX
+M=$NC_CURRENT_PREFIX
+R=${NC_REPLACE_PREFIX}
+L=$NC_LOG_ROOT
+LN=${NC_BULK_PREFIX}-${myjobid}
+LB=${NC_LOG_ROOT}/${LN}
+
+tstart=$(date "+%s")
+
+_sep() {
+    echo "==================================================================================="
+}
+
+_elapsed() {
+    local tend=$(date "+%s")
+    local D=$(expr $tend - $tstart)
+    echo $D
+}
+
+_timing() {
+    echo "Duration: $1 Seconds"
+}
+
+_compress() {
+    local xz=$(type -p xz)
+    local e
+    [ -n "$xz" ] || return 1
+    pushd $NC_LOG_ROOT >/dev/null
+    for e in out err
+    do
+        [ -f ${NC_BULK_PREFIX}-${myjobid}.${e} ] || continue
+        $xz -z -k ${NC_BULK_PREFIX}-${myjobid}.${e}
+        [ $? -eq 0 ] && rm -f ${NC_BULK_PREFIX}-${myjobid}.${e}
+    done
+    popd >/dev/null
+    return 0
+}
+
+_rename() {
+    [ -f "$runfile" ] && rm -f "$runfile"
+    _compress
+}
+
+opt_clean() {
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -clean) return 0 ;;
+        esac
+        shift
+    done
+    return 1
+}
+
+trap _rename EXIT
+
+_sep
+echo "Running on $(uname -n), OS is $(uname -s), Machine is $(uname -m)"
+echo "Running at $(date)"
+_sep
+
+jobfile=$(jobfile_for_jobid $myjobid)
+[ -f "$jobfile" ] || _fail "Failed to get jobfile $jobfile for job id $myjobid"
+source $jobfile
+echo "Job id: $jobid, stamp: $stamp, options: $options"
+[ $jobid -eq $myjobid ] || _fail "Job id in jobfile $jobfile does not match passed job id $myjobid"
+_sep
+
+cd $PROJROOT
+# opt_clean "$@" && ./Scripts/ncnuke
+
+echo "Runnig buildall for Windows"
+echo "Options are: $options"
+
+tstart=$(date "+%s")
+WCBUILDROOT="$(get_job_root $myjobid)" $SCRIPTS/internal/ncbulkall $options -log ${LB}.log 2>>${LB}.err >>${LB}.out
+D=$(_elapsed)
+_timing $D
+_timing $D >> ${LB}.log
+_rename
+sync ${LB}.log ${LB}.out ${LB}.err
+sleep 3
+exit 0

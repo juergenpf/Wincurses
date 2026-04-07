@@ -3,21 +3,27 @@
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/internal/inc
-. $SCRIPTS/internal/batch
+. $SCRIPTS/internal/bulk
 
 err=
 _jobid=
 _stamp=
 _mainopt=0
 
-_opt_clean=0
+_opt_delete=0
+_opt_purge=0
 _opt_list=0
 _opt_show=0
 _opt_out=0
 _opt_err=0
 
-opt_clean() {
-    [ $_opt_clean -ne 0 ] && return 0
+opt_delete() {
+    [ $_opt_delete -ne 0 ] && return 0
+    return 1
+}
+
+opt_purge() {
+    [ $_opt_purge -ne 0 ] && return 0
     return 1
 }
 
@@ -42,24 +48,12 @@ opt_err() {
 }
 
 _guess_jobid() {
-    local jobid
-    local stamp
-    local options
-    local jobfile=${NC_CURRENT_PREFIX}.job
-    pushd $PROJROOT/${NC_LOGBASE} >/dev/null
-    if [ -f "$jobfile" ]; then
-        source "$jobfile"
-        echo "$jobid"
-    else
-        jobfile=${NC_LAST_PREFIX}.job
-        if [ -f "$jobfile" ]; then
-            source "$jobfile"
-            echo "$jobid"
-        else
-            _fail "No current or last job found to guess job ID from"
-        fi
-    fi
-    popd >/dev/null
+    local jobid=$(last_jobid)
+    local f
+    [ $jobid -ne 0 ] || _fail "No previous job found to guess job ID from"
+    f=$(jobfile_for_jobid $jobid)
+    [ -f "$f" ] || _fail "No job file found for last job ID $jobid"
+    echo "$jobid"
 }
 
 get_options() {
@@ -67,12 +61,22 @@ get_options() {
     while [[ $# -gt 0 ]]
     do
 	    case "$1" in
-            -c|-clean)
-                _opt_clean=1
+            -d|-delete)
+                _opt_delete=1
                 _mainopt=$(expr $_mainopt + 1)
+                shift
+                if [ $# -gt 0 ]; then
+                    _jobid="$1"
+                else
+                    _fail "-delete requires jobid"
+                fi
                 ;;
             -l|-list)
                 _opt_list=1
+                _mainopt=$(expr $_mainopt + 1)
+                ;;
+            -p|-purge)
+                _opt_purge=1
                 _mainopt=$(expr $_mainopt + 1)
                 ;;
             -s|-show)
@@ -87,16 +91,22 @@ get_options() {
                 [ -n "$_jobid" ] || _fail "Invalid job ID for --show option"
                 ;;
             -o|-out)
+                [ $_opt_show -ne 0 ] || _fail "--out option must be used before -show"
                 _opt_out=1
                 ;;
             -e|-err)
+                [ $_opt_show -ne 0 ] || _fail "--err option must be used before -show"
                 _opt_err=1
+                ;;
+            -v|-verbose)
+                _nc_verbose=1
                 ;;
             -h|-help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
-                echo "  -c, -clean   Clean all old job entries."
+                echo "  -d, -delete  Delete a specific job entry."
                 echo "  -l, -list    List all job entries (this is the default if no other options are specified)."
+                echo "  -p, -purge   Purge all job entries."
                 echo "  -s, -show    Show details of a specific job entry."
                 echo "  -o, -out     Show the standard output of a specific job entry."
                 echo "  -e, -err     Show the standard error of a specific job entry."
@@ -123,47 +133,46 @@ get_options() {
 
 get_options $@
 [ $? -ne 0 ] && _fail "Invalid options: $err"
-[ $_mainopt -gt 1 ] && _fail "Only one of --clean, --list or --show options can be specified at the same time"
+[ $_mainopt -gt 1 ] && _fail "Only one of --delete, --list, --show or --purge options can be specified at the same time"
 
 if opt_out || opt_err; then
     if [ -z "$_jobid" ]; then
-        _fail "Job ID must be specified with --out or --err option"
+        _fail "Job ID must be specified with -out or -err option"
     fi
     if ! opt_show; then
-        _fail "--show option must be specified with --out or --err option"
+        _fail "--show option must be specified with -out or -err option"
     fi
-    opt_out && opt_err && _fail "Cannot specify both --out and --err options at the same time"
+    opt_out && opt_err && _fail "Cannot specify both -out and -err options at the same time"
 fi
 
 _list() {
     local jobid
     local stamp
     local options
+    local runfile
+    local mark=
+
     for job in *.job
     do
+        mark=" "
         [ -f "$job" ] || continue
-        source "$job"
-        echo "JobID: $jobid, Timestamp: $stamp, Options: $options"
-    done | sort -k 2 -u -n -r
+        runfile="${job%.job}.run"
+        [ -f "$runfile" ] && mark="*"
+        source $job
+        echo "${mark}JobID: $jobid, Timestamp: $stamp, Options: $options"
+    done | sort -k 4 -u -r
 }
 
 
 _find_job() {
     local job="$1"
-    local jobfile="${NC_REPLACE_PREFIX}-${job}.job"
+    local jobfile=$(jobfile_for_jobid $job)
     local res=
     local jobid
     local stamp
     local options
-    if [ ! -f "$jobfile" ]; then
-        jobfile=${NC_CURRENT_PREFIX}.job
-        if [ -f "$jobfile" ]; then   
-           source "$jobfile"
-           [ "$jobid" == "$job" ] && res="$jobfile"
-        fi
-    else
-        res="$jobfile"
-    fi
+    source "$jobfile"
+    [ "$jobid" == "$job" ] && res="$jobfile"    
     echo "$res"
 }
 
@@ -179,7 +188,7 @@ _show() {
     [ -z "$pager" ] && pager=cat
     [ -n "$jobfile" ] || _fail "No job found with ID $_jobid"
     source "$jobfile"
-    name=${NC_BATCH_PREFIX}-${stamp}
+    name=${NC_BULK_PREFIX}-${jobid}
     opt_out && ext="out"
     opt_err && ext="err"
     if [ -f "${name}.${ext}.xz" ]; then
@@ -193,24 +202,16 @@ _show() {
     fi
 }
 
-_clean() {
-    [ -f "$NC_CURRENT_JOB" ] && _fail "There is a running job, cannot run clean. Please wait until the job is finished and try again."
-    rm -f ${NC_BATCH_PREFIX}-*.job
-    rm -f ${NC_BATCH_PREFIX}-*.log
-    rm -f ${NC_BATCH_PREFIX}-*.out
-    rm -f ${NC_BATCH_PREFIX}-*.err
-    rm -f ${NC_BATCH_PREFIX}-*.devc
-    rm -f ${NC_BATCH_PREFIX}-*.out.xz
-    rm -f ${NC_BATCH_PREFIX}-*.err.xz
-    rm -f ${NC_REPLACE_PREFIX}-*.job
-    rm -f ${NC_LAST_PREFIX}.job
-
+_delete() {
+    _trace "Deleting job with ID $_jobid"
+    delete_job "$_jobid" || _fail "Cannot delete job with ID $_jobid. Maybe it is still running."
 }
 
-pushd $PROJROOT/${NC_LOGBASE} >/dev/null
+pushd ${NC_LOG_ROOT} >/dev/null
 [ $_mainopt -eq 0 ] && _list
 opt_list && _list
 opt_show && _show
-opt_clean && _clean
+opt_delete && _delete
+opt_purge && purge_jobs
 popd >/dev/null
 exit 0

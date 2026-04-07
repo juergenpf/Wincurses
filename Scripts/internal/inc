@@ -376,6 +376,12 @@ get_suffix() {
     return 0
 }
 
+get_effective_project_root() {
+    [ -n "$WCBUILDROOT" ] && echo "$WCBUILDROOT" && return 0
+    echo $PROJROOT
+    return 0
+}
+
 get_extra_suffix() {
     local s_suff=
     local i_suff=

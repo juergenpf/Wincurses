@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # See License.md in the project root for license information.
 #
-SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
+SCRIPTS=$(cd $(dirname $BASH_SOURCE)/.. && pwd)
 . $SCRIPTS//internal/inc
 
 
@@ -20,6 +20,7 @@ doall() {
     local msvcrt=
     local nocon=0
     local expected=0
+    local R=$(get_effective_project_root)
     local libs="ncurses panel menu form"
     local lib
     local cnt=0
@@ -65,7 +66,7 @@ doall() {
         fi
     fi
     for lib in $libs; do
-        cnt=$(find ${PROJROOT}/${_relative_buildroot} -type f -name "lib${lib}*.a" | grep $prf | grep -v _g\\.a$ | grep -v \\.dll\\.a$ | wc -l)
+        cnt=$(find ${R}/${_relative_buildroot} -type f -name "lib${lib}*.a" | grep $prf | grep -v _g\\.a$ | grep -v \\.dll\\.a$ | wc -l)
         if [ $cnt -ne $expected ]; then
             _log "Expected $expected builds for library ${lib} but found $cnt. Please check the build output for errors."
         else
