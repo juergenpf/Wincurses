@@ -5,6 +5,35 @@ SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
 WORKSPACE=$(dirname $(dirname "$SCRIPT"))
 HELPER=WincursesHelper.ps1
 
+get_llvm_mingw_current_version() {
+    local v=
+    if [ -f "${SCRIPT}/../devcontainer.json" ]; then
+        v=$(grep LLVM_MINGW_VERSION "${SCRIPT}/../devcontainer.json" | cut -d: -f2 | tr -d '",')
+    fi
+    echo $v
+}
+
+get_llvm_mingw_version() {
+    local version=$(curl -sL https://api.github.com/repos/mstorsjo/llvm-mingw/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -n "$version" ]; then
+        echo "$version"
+    else
+        echo "Error: Unable to fetch llvm-mingw version ${llvm_mingw_version}" >&2
+        echo ""
+    fi
+}
+
+guess_llvm_toolchain() {
+    local v=$(get_llvm_mingw_version)
+    if [ -z "$v" ]; then
+        v=$(get_llvm_mingw_current_version)
+        if [ -z "$v" ]; then
+            v="20260407"
+        fi
+    fi
+    echo $v
+}
+
 wsl_profile_helper() {
     local T=$(mktemp)
     local w=$(type -p where.exe)
@@ -89,6 +118,9 @@ MSYS2PATH=
 PRLPATH=
 DISTRO=
 
+llvm_mingw_version=$(guess_llvm_toolchain)
+echo "detected LLVM MinGW toolchain version: $llvm_mingw_version"
+
 case "$(uname -s)" in
     Darwin*)
         LOCALE="$(defaults read -g AppleLocale).UTF-8"
@@ -136,6 +168,7 @@ esac
 if [ -f "${SCRIPT}/../devcontainer.json.in" ]; then
     T=$(mktemp)
     cat "${SCRIPT}/../devcontainer.json.in" | \
+        sed "s|@LLVM_MINGW_VERSION@|$llvm_mingw_version|g" |\
         sed "s|@LOCALE@|$LOCALE|g" | \
         sed "s|@DISTRO@|$DISTRO|g" | \
         sed "s|@REPOPATH@|$WORKSPACE|g" | \

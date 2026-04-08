@@ -8,6 +8,7 @@ FROM debian:sid-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ARG LLVM_MINGW_VERSION
 ARG LOCALE
 ARG TZ
 ARG ORIGINAL_REPO_PATH
@@ -88,7 +89,7 @@ ENV LC_ALL=$LOCALE
 # llvm-mingw (Used for ARM64 builds only)
 # --------------------------------------------------
 WORKDIR /opt
-ENV LLVM_MINGW_VERSION=20260324
+ENV LLVM_MINGW_VERSION=$LLVM_MINGW_VERSION
 RUN curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/llvm-mingw-${LLVM_MINGW_VERSION}-ucrt-ubuntu-22.04-$(uname -m).tar.xz \
     -o llvm-mingw.tar.xz && \
     tar xf llvm-mingw.tar.xz && \
