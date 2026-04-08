@@ -75,7 +75,7 @@ _sep
 jobfile=$(jobfile_for_jobid $myjobid)
 [ -f "$jobfile" ] || _fail "Failed to get jobfile $jobfile for job id $myjobid"
 source $jobfile
-echo "Job id: $jobid, stamp: $stamp, options: $options"
+echo "JobID: $jobid, Timestamp: $stamp, Type: $type, Options: $options"
 [ $jobid -eq $myjobid ] || _fail "Job id in jobfile $jobfile does not match passed job id $myjobid"
 _sep
 

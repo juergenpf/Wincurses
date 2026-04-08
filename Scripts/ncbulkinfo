@@ -61,22 +61,8 @@ get_options() {
     while [[ $# -gt 0 ]]
     do
 	    case "$1" in
-            -d|-delete)
-                _opt_delete=1
-                _mainopt=$(expr $_mainopt + 1)
-                shift
-                if [ $# -gt 0 ]; then
-                    _jobid="$1"
-                else
-                    _fail "-delete requires jobid"
-                fi
-                ;;
             -l|-list)
                 _opt_list=1
-                _mainopt=$(expr $_mainopt + 1)
-                ;;
-            -p|-purge)
-                _opt_purge=1
                 _mainopt=$(expr $_mainopt + 1)
                 ;;
             -s|-show)
@@ -90,12 +76,26 @@ get_options() {
                 fi
                 [ -n "$_jobid" ] || _fail "Invalid job ID for --show option"
                 ;;
+            -d|-delete)
+                _opt_delete=1
+                _mainopt=$(expr $_mainopt + 1)
+                shift
+                if [ $# -gt 0 ]; then
+                    _jobid="$1"
+                else
+                    _fail "-delete requires jobid"
+                fi
+                ;;
+            -p|-purge)
+                _opt_purge=1
+                _mainopt=$(expr $_mainopt + 1)
+                ;;
             -o|-out)
-                [ $_opt_show -ne 0 ] || _fail "--out option must be used before -show"
+                [ $_opt_show -ne 0 ] && _fail "--out option must be used before -show"
                 _opt_out=1
                 ;;
             -e|-err)
-                [ $_opt_show -ne 0 ] || _fail "--err option must be used before -show"
+                [ $_opt_show -ne 0 ] && _fail "--err option must be used before -show"
                 _opt_err=1
                 ;;
             -v|-verbose)
@@ -104,10 +104,10 @@ get_options() {
             -h|-help)
                 echo "Usage: $0 [options]"
                 echo "Options:"
-                echo "  -d, -delete  Delete a specific job entry."
                 echo "  -l, -list    List all job entries (this is the default if no other options are specified)."
-                echo "  -p, -purge   Purge all job entries."
                 echo "  -s, -show    Show details of a specific job entry."
+                echo "  -d, -delete  Delete a specific job entry."
+                echo "  -p, -purge   Purge all job entries."
                 echo "  -o, -out     Show the standard output of a specific job entry."
                 echo "  -e, -err     Show the standard error of a specific job entry."
                 exit 0
@@ -151,6 +151,7 @@ _list() {
     local options
     local runfile
     local mark=
+    local type=
 
     for job in *.job
     do
@@ -159,7 +160,7 @@ _list() {
         runfile="${job%.job}.run"
         [ -f "$runfile" ] && mark="*"
         source $job
-        echo "${mark}JobID: $jobid, Timestamp: $stamp, Options: $options"
+        echo "${mark}JobID: $jobid, Timestamp: $stamp, Type: $type, Options: $options"
     done | sort -k 4 -u -r
 }
 
@@ -170,7 +171,10 @@ _find_job() {
     local res=
     local jobid
     local stamp
+    local type  
     local options
+    
+    [ -f "$jobfile" ] || _fail "No job found with ID $job"
     source "$jobfile"
     [ "$jobid" == "$job" ] && res="$jobfile"    
     echo "$res"
@@ -180,6 +184,7 @@ _show() {
     local jobfile="$(_find_job $_jobid)"
     local jobid
     local stamp
+    local type
     local options
     local name=
     local ext="log"

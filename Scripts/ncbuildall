@@ -11,6 +11,12 @@ forbidden_feature() {
       _fail "Option -$feature is not allowed when using $SCRIPTNAME, because it is part of the constructed set of builds."
 }
 
+forbidden_option() {
+    local option="$1"
+    has_option arg_options "$option" && \
+      _fail "Option -$option is not allowed when using $SCRIPTNAME, because we build in a clean environment."
+}
+
 get_options() {
     parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters -no-defaults "$@"
     [ $? -ne 0 ] && _fail "Error parsing options"
@@ -47,7 +53,6 @@ Usage: $0 [options]
 
   Other options:
   
-    -clean               Clean build and install directories before building
     -verbose             Enable verbose output
     -log <file>          Log verbose output to the specified file
     -help                Show this help message and exit
@@ -55,6 +60,7 @@ EOF
         exit 0
     }
 
+    forbidden_option clean
     forbidden_feature wide
     forbidden_feature ascii
     forbidden_feature winconsole
@@ -90,10 +96,11 @@ NCJOB=$(jobfile_for_jobid $jobid)
 cat > $NCJOB <<EOF
 jobid=$jobid
 stamp=$stamp
+type=buildall
 options="$addopts"
 EOF
 
-nohup bash -c "$SCRIPTS/internal/ncbulk $jobid" >/dev/null 2>/dev/null &
+nohup nice -n 19 ionice -c 3 bash -c "$SCRIPTS/internal/ncbulk $jobid"  >/dev/null 2>/dev/null &
 _log "Started background bulk build with job id $jobid. You may inspect it with ncbulkinfo (alias ncbi)."
 _log "e.g. use commandline: 'ncbi -s $jobid' to see the log output of the job"
 _log "or use 'ncbi -e -s $jobid' to see the error output of the job" 

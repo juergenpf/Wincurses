@@ -235,18 +235,22 @@ Even if the install fails, you may be able to run the test programs, even withou
 
 `ncbuild` is a command, that may also be run outside of the devcontainer. In that case, I assume, that the host OS has the necessary toolchains (gcc, binutils etc.) installed, to be able to compile ncurses. 
 
+### ncbuildinfo
+This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
+
 ### ncnuke
 `ncnuke` will completely remove the top level directories `build` and ìnst` and v´create new ones, which are empty. Every subsequent build will start fresh. We assume this to software for adults, so no questions like "are you sure?" will be asked. We assume, you know what you are doing.
 
 ### ncbuildall
-`ncbuildall` is a batch command that builds all possible combinations of certain build options in one command. 
-In each of these four environments, it will build wide and non-wide builds, so we have 8 builds. If you use the --reentrant option, we add reentrancy to all the combinations, which will result in 16 total builds.
+`ncbuildall` is a bulk command that builds all possible combinations of the `-spfuncs` and the `-interop` options in one command (4 possible combinations). 
+In each of these four combinations, it will build wide and non-wide variants, so we have 8 builds. If you use the --reentrant option, we add reentrancy to all the combinations, which will result in 16 total builds.
 
-If you run it for a native build, we will run builds for all possible combintations of
-- wide vs. non-wide build (--ascii option or not)
-- interop or non-interop build (--interop option or not)
-- sp-funcs build or not (--spfuncs option or not)
-This results in 8 different combinations of these options, so 16 builds will be done from the single `ncbuildall` command.
+Then it will build all usefull combinatuons of `-conpty` and `-winconsole` and apply thes to each build (3 combinations).
+
+So for a Windows build, you'l have 24 builds if you don't use `-reentrant`and 48 builds if you use it. That will take a while.
+
+Therefore I've implemented a simble bulk job management system into this container. Actually, `ncbuildall` will run in such a background job with low priority and tell you after you've started the command the JobID it has assigned to that bulk build. You can examine the status and results of such a bulk job with the `ncbulkinfo` command (see below).
+
 You may call `ncbuildall` with these options:
 ```bash
 Usage: ncbuildall [options]
@@ -281,39 +285,51 @@ Usage: ncbuildall [options]
 
   Other options:
   
-    -clean               Clean build and install directories before building
     -verbose             Enable verbose output
     -log <file>          Log verbose output to the specified file
     -help                Show this help message and exit  ```
 ```
 The meaning of the various obtions is explained in the `ncbuild` command description.
 
-### ncbuildinfo
-This script takes the same arguments as ncbuild, but instead of running the build, it just dumps a set of variables that describes build and install directories, prefixes, suffixes and target-architecture. These are written in a way that you can pipe it into a shell and get the various informations into shell variables for further processing.
-
-### ncbatchbuild
-This command is not for use inside the container, but on the host system running the container. If this system has the at utulity and the command `batch` is available, it will queue a `ncbuildall` command into the batch queue. It accepts the same options like the `ncbuildall` command.
-
-### ncshowlog
-If you use `ncbatchbuild` you may want to inspect the results and the status of such a build in a comfortable way. This is the purpose of this command. It has these options:
+### ncbulkinfo (alias: ncbi)
+If you use `ncbuildall` you may want to inspect the results and the status of such a bulk build in a comfortable way. This is the purpose of this command. It has these options:
 ```bash
-  -c, -clean           Clean all old job entries.
-  -l, -list            List all job entries (this is the default if no other options are specified).
-  -s, -show            Show details of a specific job entry.
-  -o, -out             Show the standard output of a specific job entry.
-  -e, -err             Show the standard error of a specific job entry.
+Options:
+  -l, -list    List all job entries (this is the default if no other options are specified).
+  -s, -show    Show details of a specific job entry.
+  -d, -delete  Delete a specific job entry.
+  -p, -purge   Purge all job entries.
+  -o, -out     Show the standard output of a specific job entry.
+  -e, -err     Show the standard error of a specific job entry.
 ```
-The `--show` option requires a job ID as additional argument, the `--out` or `--err` options can only be used together with `--show`.
+#### -l|-list
+Will list all jobs in the system, running jobs will have a '*' before their Job ID.
+#### -s | -show
+The `-show` option accepts a job ID as additional argument, if you don't specify a Job ID the last created Job will be used. The `-out` or `-err` options can only be used together with `-show` and must be specified **before** `-show`. If `-show`is used, it should alwayd be the last option on the commandline.
 
 Example use:
 ```bash
-$ ncshowlog -show 91
+$ ncbulkinfo -show 91
 ```
 will show the `log` output of the job with ID 91. If you use
 ```bash
-$ ncshowlog -show 91 -err
+$ ncbulkinfo -err -show 91
 ```
 you will see the stderr output of that job.
+#### -d|-delete
+Requires a Job ID and will delete all files and directories related to this job. If you try to delete a running job, you'll get an error.
+
+Example use:
+```bash
+$ ncbi -delete 91
+```
+will delete Job 91.
+#### -p|-purge
+This command will delete **ALL** jobs, except the currently running ones.
+#### -e,-err
+Can only be used together with `-show` and must be specified before `-show`. It tells the show command, that you want to see the error output of the job.
+#### --,-out
+Can only be used together with `-show` and must be specified before `-show`. It tells the show command, that you want to see the standard output of the job.
 
 ## Build and Install Directory Layout
 
@@ -352,6 +368,8 @@ The actual build directory path is constructed as:
 
 This structure allows for easy separation and identification of builds for different architectures, C runtimes, and feature sets.
 
+If you do a bulk build, these directories will be additionally prefixed with the directory path `.bulk/jobs/[jobid]/`, where [jobid] is the assigned Job ID for that job.
+
 ## How to test compiled programs
 In theory you could use [wine](https://www.winehq.org/) - which is contained in the devcontainer - to run the compiled Windows programs on Linux. But let's be clear about two facts:
 - **Never** run a console test program in a VS Code terminal! Too many agents and tools are interacting with input and output of that terminal window and this makes it nearly impossible to run tests without strange effects. So open a shell outside of VS Code, navigate to the directory and use wine to launch the program.
@@ -374,10 +392,11 @@ if (Test-Path -Path "$wnchelper" -PathType Leaf) {
 }
 ```
 When you now open a new Powershell Terminal session, this helperfile will be included and add two new cmdlets:
-- Set-WincursesTestLocation (alias: pwct)
+- Push-WincursesTestLocation (alias: pwct)
 - Start-MinGWDebug (alias: ncdbg)
 
 The Push-WincursesTestLocation accepts these switches:
+- -JobID
 - -ascii
 - -reentrant
 -  -spfuncs
@@ -391,7 +410,7 @@ The Push-WincursesTestLocation accepts these switches:
 - -msvcrt
 - -nodebug
 
-They have the same meaning as with ncbuild, but in this case they are only used to compute the name of the build directory used for the configuration you selected by the choice of options. Please not, that Powershell always uses the long names for the options, but only with a single '-' in front of the option.
+They have the same meaning (except JobID) as with ncbuild, but in this case they are only used to compute the name of the build directory used for the configuration you selected by the choice of options. Please not, that Powershell always uses the long names for the options, but only with a single '-' in front of the option.
 So, if you use the alias `pwct`, when you type in Powershell
 ```powershell
 pwct

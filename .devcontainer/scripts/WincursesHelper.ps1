@@ -28,6 +28,18 @@ function Get-WincursesDirectory {
     return $dir
 }
 
+function GetEffectiveBuildRoot {
+    [CmdletBinding()]
+    param([int]$JobID)
+
+    [string]$repoRoot = Get-WincursesDirectory
+    [string]$buildRoot = $repoRoot
+    if ($JobID -ne $null -or $jobid -gt 0) {
+        $buildRoot = (Join-PAth $repoRoot (Join-Path (Join-Path ".bulk" "jobs") $JobID.ToString()))
+    }
+    return $buildRoot
+}
+
 function GetConfigPrefix {
     [CmdletBinding()]
     param(
@@ -292,6 +304,9 @@ function Push-WincursesTestLocation {
     .PARAMETER msvcrt
         Select the MSVCRT (legacy C runtime) variant. Default is UCRT.
         Required for -x86 builds. Cannot be combined with -aarch64.
+    .PARAMETER JobID
+        If the build you want to test is part of a bulk job, specify the Job ID 
+        to locate the correct build output. Default is 0, which means no bulk job.
     .EXAMPLE
         pwct -conpty
         Navigate to the default wide/debug/x86_64/UCRT/ConPTY build directory.
@@ -330,8 +345,12 @@ function Push-WincursesTestLocation {
         [Parameter(HelpMessage="Select the terminfo-library-only build variant")]
         [Switch]$termlib,
         [Parameter(HelpMessage="Select MSVCRT runtime (default: UCRT). Required for -x86. Cannot be combined with -aarch64.")]
-        [Switch]$msvcrt
+        [Switch]$msvcrt,
+        [Parameter(HelpMessage="If the build you want to test is part of a bulk job, specify the Job ID to locate the correct build output")]
+        [int]$JobID = 0
     )
+    [string]$buildRoot = GetEffectiveBuildRoot -JobID $JobID
+
     [bool]$isconpty = $conpty
     if (!($conpty -or $winconsole)) {
         $isconpty = $true
@@ -343,9 +362,9 @@ function Push-WincursesTestLocation {
 
     $Env:WNCDEBUG=""
     
-    [string]$loc = (Join-Path (Join-Path (Get-WincursesDirectory) "build") (RelativeBuildDir -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole))
+    [string]$loc = (Join-Path (Join-Path ($buildRoot) "build") (RelativeBuildDir -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole))
     if (Test-Path -path $loc  -PathType Container) {
-        [string]$inst=(Join-Path (Join-Path (Get-WincursesDirectory) "inst") (RelativeInstallDir -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole))
+        [string]$inst=(Join-Path (Join-Path ($buildRoot) "inst") (RelativeInstallDir -release:$release -x86:$x86 -aarch64:$aarch64 -reentrant:$reentrant -ascii:$ascii -msvcrt:$msvcrt -spfuncs:$spfuncs -interop:$interop -conpty:$isconpty -winconsole:$winconsole))
         [string]$lib = (Join-Path $loc "lib")
         [string]$bin = (Join-Path $inst "bin")
         if ($dynamic) {
