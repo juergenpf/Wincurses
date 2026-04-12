@@ -46,7 +46,7 @@ $ cd ..
 $ ./.devcontainer/scripts/configure
 $ code .
 ```
-The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. 
+The configure script is necessary to create a defcontainer.json file that automatically configures your timezone and locale for the devcontainer, inheriting them from your Linux or MacOS environment. It also checks the release version of the uses LLVM toolchain for Windows on ARM, and if this version has been updated, it generates an updated config file for the devcontainer.
 
 In order to forward the SSH auth from your host into the `VS Code` container, you must configure `VS Code` to handle ssh agent forwarding for you. Open the command palette and type "`Remote.SSH`". You should see "`Remote-SSH:Settings`" beeing offered in the drop-down selection. Open that settings dialog and set two options to these values:
 - remote.SSH.EnableAgentForwarding: true
@@ -56,7 +56,7 @@ with these settings, `VS Code` will handle the minimum required to allow you to 
 
 **WARNING:** Apple apparently believes, that asking the OS for the name of the timezone is a security relevant thing and you need `sudo` priviledge to do that. Most developers have that on their dev-machines, so depending on your setup be prepared, that `configure` may ask for your password to get permission to enter sudo mode.
 
-**IMPORTANT HINT:** Please run the configure script each time you sync a new version of this repository, because things may have changed. In most cases, this will not require to rebuild the devcontainer, but even that may be necessary if you sync.
+**IMPORTANT HINT:** Please run the configure script from time to time, at least each time you sync a new version of this repository, because things may have changed. In most cases, this will not require to rebuild the devcontainer, but even that may be necessary if you sync. The configure script will update the devcontainer configuration only. if any of the parameters for the configuration have changed. It will tell you that. So it is safe to run configure, it will not affect the configuration if nothing has changed.
 
 The final "`code .`" will now bring up VS Code, assuming it is installed on your system. VS Code will discover the .devcontainer.json file and ask you, to reopen the session in the devcontainer. You should do that and then, if this is the first call, the containerimage will be built and then the container will be launched and VS Code connects to it. Depending on the performance of your hardware and the performance of your internet connection, this may take a few minutes. But this is only done, when the image needs to be built or rebuilt.
 
