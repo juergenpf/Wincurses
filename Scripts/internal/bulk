@@ -1,3 +1,6 @@
+# Please see License.md in the root of the project for license information.
+# Copyright (c) 2026 Juergen Pfeifer.
+#
 NC_BULK_PREFIX=ncbulk
 
 NC_RELATIVE_BULKROOT=.bulk

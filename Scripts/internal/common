@@ -1,4 +1,6 @@
-# See License.md in the project root for license information.
+# Please see License.md in the root of the project for license information.
+# Copyright (c) 2026 Juergen Pfeifer.
+#
 # Include file with common settings and functions for most scripts
 SCRIPTNAME=$(basename $0)
 PROJROOT=$(cd $SCRIPTS/.. && pwd)

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# See License.md in the project root for license information.
+# Please see License.md in the root of the project for license information.
+# Copyright (c) 2026 Juergen Pfeifer.
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/internal/inc

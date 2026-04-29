@@ -1,21 +1,10 @@
 #!/usr/bin/env bash
-# See License.md in the project root for license information.
+# Please see License.md in the root of the project for license information.
+# Copyright (c) 2026 Juergen Pfeifer.
 #
 SCRIPTS=$(cd $(dirname $BASH_SOURCE) && pwd)
 . $SCRIPTS/internal/inc
 . $SCRIPTS/internal/bulk
-
-forbidden_feature() {
-    local feature="$1"
-    has_feature arg_features "$feature" && \
-      _fail "Option -$feature is not allowed when using $SCRIPTNAME, because it is part of the constructed set of builds."
-}
-
-forbidden_option() {
-    local option="$1"
-    has_option arg_options "$option" && \
-      _fail "Option -$option is not allowed when using $SCRIPTNAME, because we build in a clean environment."
-}
 
 get_options() {
     parse_args arg_config arg_features arg_runtime arg_target arg_options arg_parameters -no-defaults "$@"
@@ -60,7 +49,8 @@ EOF
         exit 0
     }
 
-    forbidden_option clean
+    forbidden_option  clean
+
     forbidden_feature wide
     forbidden_feature ascii
     forbidden_feature winconsole
@@ -84,7 +74,6 @@ addopts=$(common_addopts)
 
 feature_dynamic  && addopts+=" -dynamic"
 feature_termlib  && addopts+=" -termlib" 
-option_clean     && addopts+=" -clean"
 option_verbose   && addopts+=" -verbose"
 
 stamp=$(date +"%Y%m%d%H%M%S")

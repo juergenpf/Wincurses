@@ -1,4 +1,6 @@
-# See License.md in the project root for license information.
+# Please see License.md in the root of the project for license information.
+# Copyright (c) 2026 Juergen Pfeifer.
+#
 . $SCRIPTS/internal/common
 
 declare arg_config=()
@@ -167,6 +169,18 @@ function parse_args() {
     _nc_verbose=${options["verbose"]+1}
 
     return 0
+}
+
+forbidden_feature() {
+    local feature="$1"
+    has_feature arg_features "$feature" && \
+      _fail "Option -$feature is not allowed when using $SCRIPTNAME, because it is part of the constructed set of builds."
+}
+
+forbidden_option() {
+    local option="$1"
+    has_option arg_options "$option" && \
+      _fail "Option -$option is not allowed when using $SCRIPTNAME, because we build in a clean environment."
 }
 
 get_config() {
