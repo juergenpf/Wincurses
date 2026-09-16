@@ -41,7 +41,7 @@ $ git clone https://github.com/juergenpf/Wincurses.git
 $ cd Wincurses
 $ git submodule update --init --recursive
 $ cd ncurses
-$ git checkout conpty
+$ git checkout mergeconpty
 $ cd ..
 $ ./.devcontainer/scripts/configure
 $ code .
