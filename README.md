@@ -39,6 +39,7 @@ If you want to use the devcontainer, either fork this project on GitHub into you
 ```bash
 $ git clone https://github.com/juergenpf/Wincurses.git
 $ cd Wincurses
+$ git submodule sync
 $ git submodule update --init --recursive
 $ cd ncurses
 $ git checkout mergeconpty
