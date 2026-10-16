@@ -156,7 +156,7 @@ Options:
 ~~~
 #### Example
 ```bash
-./ncbuild --ascii --x86 --msvcrt
+./ncbuild -ascii -x86 -msvcrt
 ```
 would do a static debug build of a non-wide ncurses for the i686 architecture targeting MSVCRT.
 
@@ -349,10 +349,10 @@ build/
 Where the suffix characters [w][t][s][i][p][c] mean: 
 - w: wide character build (no --ascii was specified)
 - t: reentrant build
-- s: a build with --spfuncs
-- i: a build with --interop
-- p: For non-native builds only: a ConPTY build (no --noconpty was specified)
-- c: For non-native builds only: a --winconsole build
+- s: a build with -spfuncs
+- i: a build with -interop
+- p: For non-native builds only: a ConPTY build (-conpty was specified)
+- c: For non-native builds only: a -winconsole build
 
 
 The actual build directory path is constructed as:
@@ -402,7 +402,7 @@ The Push-WincursesTestLocation accepts these switches:
 - -reentrant
 -  -spfuncs
 -  -interop
-- -noconpty
+- -conpty
 - -wincurses
 - -x86
 - -woa
