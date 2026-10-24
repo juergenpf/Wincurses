@@ -10,6 +10,10 @@ declare arg_target=()
 declare -A arg_options=()
 declare -A arg_parameters=()
 
+function supports_aarch64_llvm() {
+    [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]
+}
+
 function has_feature() {
     local -n _features=$1
     local feature=$2
@@ -93,6 +97,7 @@ function parse_args() {
                 target+=("x86_64")
                 ;;
             -aarch64)
+		supports_aarch64_llvm || _fail "aarch64 cross tools are not available on this platform"
                 target+=("aarch64")
                 ;;
             -x86)

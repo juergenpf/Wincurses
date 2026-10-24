@@ -5,6 +5,13 @@ SCRIPT=$(cd $(dirname $BASH_SOURCE) && pwd)
 WORKSPACE=$(dirname $(dirname "$SCRIPT"))
 HELPER=WincursesHelper.ps1
 
+trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf '%s\n' "$s"
+}
+
 get_llvm_mingw_current_version() {
     local v=
     if [ -f "${SCRIPT}/../devcontainer.json" ]; then
@@ -28,7 +35,7 @@ guess_llvm_toolchain() {
     if [ -z "$v" ]; then
         v=$(get_llvm_mingw_current_version)
         if [ -z "$v" ]; then
-            v="20260407"
+            v="20261020"
         fi
     fi
     echo $v
@@ -109,6 +116,27 @@ prl_profile_helper() {
     return 0
 }
 
+guess_wsl2_distro_name() {
+    local distro=$WSL2_DISTRO_NAME
+    if [ -z "$distro" ]; then
+	# Actually running in WSL2 this can be empty, when the shell
+	# was not started by the wsl.exe command, but for example has
+	# been spawned by a daemon like sshd. In that case we examine
+	# the environment of proper init processes. In that case we need
+	# sudo privileges.
+	distro=$(sudo sh -c 'for p in $(pgrep -f "^/init$"); do \
+           tr "\0" "\n" < /proc/$p/environ 2>/dev/null; done' | \
+		     grep ^WSL2_DISTRO_NAME= | \
+		     sed -e "s/^WSL2_DISTRO_NAME=//g" | head -1)
+	[ -n "$distro" ] && distro=$(trim $distro)
+    fi
+    echo $distro
+}
+
+function supports_aarch64_llvm() {
+    [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]
+}
+
 if [ -f /.dockerenv ]; then
     echo "Please do not run this command inside the container." >&2
     exit 1
@@ -118,7 +146,9 @@ MSYS2PATH=
 PRLPATH=
 DISTRO=
 
-llvm_mingw_version=$(guess_llvm_toolchain)
+
+llvm_mingw_version=
+supports_aarch64_llvm && llvm_mingw_version=$(guess_llvm_toolchain)
 echo "detected LLVM MinGW toolchain version: $llvm_mingw_version"
 
 case "$(uname -s)" in
@@ -142,7 +172,7 @@ case "$(uname -s)" in
     Linux*)
         uname -r | grep -q WSL2
         if [ $? -eq 0 ]; then
-            DISTRO=$WSL_DISTRO_NAME
+            DISTRO=$(guess_wsl2_distro_name)
             MSYS2PATH="//wsl\$/${WSL_DISTRO_NAME}${WORKSPACE}"
             T="${WORKSPACE}/.wslpath"
 	    echo "# This file is generated. Please don't modify or remove it" > "$T"
