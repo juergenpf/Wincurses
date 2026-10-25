@@ -134,7 +134,8 @@ guess_wsl2_distro_name() {
 }
 
 function supports_aarch64_llvm() {
-    [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]
+    local a="$(uname -m)"
+    [ "$a" = "x86_64" -o "$a" = "aarch64" -o "$a" = "arm64" ]
 }
 
 if [ -f /.dockerenv ]; then

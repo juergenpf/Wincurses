@@ -90,11 +90,12 @@ ENV LC_ALL=$LOCALE
 # --------------------------------------------------
 WORKDIR /opt
 ENV LLVM_MINGW_VERSION=$LLVM_MINGW_VERSION
-RUN if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]; then curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/llvm-mingw-${LLVM_MINGW_VERSION}-ucrt-ubuntu-22.04-$(uname -m).tar.xz \
+RUN if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" -o "$(uname -m)" = "arm64" ]; then curl -L https://github.com/mstorsjo/llvm-mingw/releases/download/${LLVM_MINGW_VERSION}/llvm-mingw-${LLVM_MINGW_VERSION}-ucrt-ubuntu-22.04-$(uname -m).tar.xz \
     -o llvm-mingw.tar.xz && \
     tar xf llvm-mingw.tar.xz && \
     mv llvm-mingw-* llvm-mingw && \
     rm llvm-mingw.tar.xz ; \
+    else true ; \
     fi
 
 # ----------------------------------------------------------------------------
@@ -186,7 +187,7 @@ ENV ORIG_PATH="$PATH"
 ENV PATH="/opt/llvm-mingw/bin:${PATH}"
 
 # 4) UCRT UTF+Unicode (for LLVM aarch64)
-RUN if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]; then \
+RUN if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" -o "$(uname -m)" = "arm64" ]; then \
     mkdir -p /tmp/pcre2-ucrt-build-aarch64 && \
     cmake -S /tmp/pcre2-git -B /tmp/pcre2-ucrt-build-aarch64 -G Ninja \
         -DBUILD_SHARED_LIBS=OFF \
@@ -212,6 +213,7 @@ RUN if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]; then \
     echo "#include <pcre2posix.h>" >> regex.h && \
     echo "#endif // REGEX_H_COMPAT" >> regex.h && \
     rm -rf /tmp/pcre2-git ;\
+    else true ; \
     fi
 
 ENV PATH="$ORIG_PATH"

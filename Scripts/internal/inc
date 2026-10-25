@@ -11,7 +11,7 @@ declare -A arg_options=()
 declare -A arg_parameters=()
 
 function supports_aarch64_llvm() {
-    [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" ]
+    [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" -o "$(uname -m)" = "arm64" ]
 }
 
 function has_feature() {
