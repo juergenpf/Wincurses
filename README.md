@@ -12,6 +12,12 @@ Wincurses favours a [GCC](https://gcc.gnu.org/)-first approach. Whenever possibl
 
 This project is for developers primarily; it doesn't focus on building deployable results, at least not yet.
 
+I've deployed and used this devcontainer on these systems:
+  -  Debian and Ubuntu systems on x86_64, aarch64 and riscv64 architectures. Please note, that crossbuilding for ARM on riscv64 is not supported for now, as the Windows-on-ARM LLVM cross-toolchain is not available on that platform. On riscv64, you can build for Windows on Intel (32 and 64 Bit)
+  - MacOS with [OrbStack](https://orbstack.dev/) as container-engine. I also tried [Docker-Desktop](https://www.docker.com/products/docker-desktop/), but wasn't pleased with its stability and performance. Please take care of OrbStack's licensing, as for commercial use it is not free!
+  - Windows with WSL2 and Ubuntu (24.04 or 26.04, both works). I recommend not using a [Docker-Desktop](https://www.docker.com/products/docker-desktop/) on the Windows host, but to install docker inside your WSL2 distribution from the default package repositories.
+  
+
 ## The Motivation
 
 The key part of the repository is the devcontainer definition itself in the usual .devcontainer directory, and the core logic for my build system is in the Scripts subdirectory. I do not have the ncurses sources replicated in this repository. Instead, there is a git submodule ncurses that links to [my snapshot of ncurses](https://github.com/juergenpf/ncurses-snapshots), which is a fork of Thomas Dickey's [official GitHub snapshot of ncurses](https://github.com/ThomasDickey/ncurses-snapshots). I keep the main branch of my fork typically in sync with the official snapshot, which is updated weekly. For a variety of reasons, the ncurses development repo is not git, but a private RCS repo that is synchronized to GitHub. You can see and feel: ncurses is a project developed and maintained by Oldies ;-)
