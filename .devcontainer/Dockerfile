@@ -69,13 +69,15 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone &
         llvm \
         lld \
         build-essential \
-        wine \
         gcc-mingw-w64-ucrt64 \
         g++-mingw-w64-ucrt64 \
         binutils-mingw-w64-ucrt64 \
         gcc-mingw-w64 \
         g++-mingw-w64 \
         binutils-mingw-w64 \
+    && if [ "$(uname -m)" = "x86_64" -o "$(uname -m)" = "aarch64" -o "$(uname -m)" = "arm64" ]; then \
+        apt-get install -y wine ;\
+    fi \
     && rm -rf /var/lib/apt/lists/* \
     && sed -i "s/# $LOCALE UTF-8/$LOCALE UTF-8/" /etc/locale.gen \
     && locale-gen $LOCALE
